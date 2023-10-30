@@ -1,0 +1,18 @@
+common:
+  http:
+    enabled: true
+    port: 8080
+  ws:
+    enabled: false
+    port: 9080
+  log_mode: debug
+
+p2p:
+  port: 9000
+  slot: 3
+peers:
+tss:
+  pubkey: "1"
+http:
+  port: 8080
+debug: true

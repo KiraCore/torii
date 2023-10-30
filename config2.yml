@@ -1,0 +1,17 @@
+common:
+  http:
+    enabled: true
+    port: 8081
+  ws:
+    enabled: false
+    port: 9081
+  log_mode: debug
+p2p:
+  port: 9001
+  slot: 3
+peers:
+  - 127.0.0.1:9000
+tss:
+  pubkey: "2"
+http:
+  port: 8081
