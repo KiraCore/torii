@@ -6,13 +6,21 @@ common:
     enabled: false
     port: 9080
   log_mode: debug
-
 p2p:
   port: 9000
-  slot: 3
+  slot: 4
+udp:
+  bufferSize: 40000
+  interval: 100ms
 peers:
 tss:
   pubkey: "1"
+  parties: 4
+  threshold: 3
+  quorum: 3
 http:
   port: 8080
 debug: true
+cache: ## cache settings
+  ttl: 120 ## ttl for entry in cache in seconds
+  clean: 240 ## when ttl expired entries should be cleaned in seconds

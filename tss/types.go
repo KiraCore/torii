@@ -1,11 +1,11 @@
 package tss
 
 import (
+	"math/big"
 	"sync"
 
-	"github.com/KiraCore/sekai-bridge/types"
-	"github.com/binance-chain/tss-lib/ecdsa/keygen"
-	"github.com/binance-chain/tss-lib/tss"
+	keygenlib "github.com/binance-chain/tss-lib/ecdsa/keygen"
+	"github.com/binance-chain/tss-lib/ecdsa/signing"
 
 	tsslib "github.com/binance-chain/tss-lib/tss"
 	p2p "github.com/saiset-co/saiP2P-go/core"
@@ -13,74 +13,71 @@ import (
 )
 
 const (
-	HandshakeMsgType   = "tss_handshake_msg"    // for registering other sekai-bridge instanses
-	KeygenMsgType      = "tss_keygen_msg"       // for keygen exchanging messages
-	KeygenStartMsgType = "tss_keygen_start_msg" // for start keygen
+	HandshakeMsgType  = "tss_handshake_msg"  // for registering other sekai-bridge instanses
+	DisconnectMsgType = "tss_disconnect_msg" // for deregister other sekai-bridge instanses
+
+	KeygenMsgType          = "tss_keygen_msg"        // for keygen exchanging messages
+	KeygenStartMsgType     = "tss_keygen_start_msg"  // for start keygen
+	KeygenCancelledMsgType = "tss_keygen_cancel_msg" // for cancelling keygen due error at some peer
+
+	KeysignMsgType          = "tss_keysign_msg"       // for keygen exchanging messages
+	KeysignStartMsgType     = "tss_keysign_start_msg" // for start keygen
+	KeysignOneRoundMsgType  = "tss_keysing_one_round"
+	KeysignCancelledMsgType = "tss_keysign_cancel_msg" // for cancelling keygen due error at some peer
 )
 
 // main tss struct
 type TssServer struct {
-	LocalPartyID *tss.PartyID `json:"local_partyID,omitempty"`
-	Pubkey       string       `json:"pubkey,omitempty"`
+	LocalPartyID *tsslib.PartyID `json:"local_partyID,omitempty"`
+	Pubkey       string          `json:"pubkey,omitempty"`
+	Parties      int
+	Threshold    int
+	Quorum       int
 	*sync.RWMutex
 	ConnectionStorage map[string]string // map[pubkey]peerAddr
 	Logger            *zap.Logger
 	P2p               *p2p.Core
-	PG                *keygen.LocalParty `json:"-"`
-	KeygenStarted     bool               `json:"keygen_started,omitempty"` // is keygen started flag
-	Key               *keygen.LocalPartySaveData
-	TssKeygen         *TssKeyGen `json:"tss_keygen,omitempty"`
-	//EndChS            chan *signing.SignatureData
-}
-
-type TssKeyGen struct {
-	Logger                      *zap.Logger
-	Pubkey                      string        `json:"pubkey,omitempty"`
-	LocalPartyID                *tss.PartyID  `json:"local_partyID,omitempty"`
-	StopChan                    chan struct{} // channel to indicate whether we should stop
-	PartiesMap                  map[tss.PartyID]bool
-	CommStopChan                chan struct{}
-	OutCh                       chan tsslib.Message
-	EndCh                       chan keygen.LocalPartySaveData
-	P2pComm                     *p2p.Core
-	Key                         *keygen.LocalPartySaveData // generated key
-	IsStarted                   bool                       `json:"is_started"` // is keygen was already started
-	ConnectionStorage           map[string]string          // map[pubkey]peerAddr
-	CachedWireBroadcastMsgLists *sync.Map
-	CachedWireUnicastMsgLists   *sync.Map
+	PG                tsslib.Party `json:"-"`
+	PS                *signing.LocalParty
+	Key               *keygenlib.LocalPartySaveData
+	KeygenInstance    *TssKeyGen `json:"tss_keygen,omitempty"`
+	KeysignInstance   *TssKeySign
+	// CommStopChan      chan struct{}
+	// OutCh             chan tsslib.Message
+	// ErrCh             chan *tsslib.Error
+	PartiesMap        map[tsslib.PartyID]bool
+	StopChan          chan struct{} // channel to indicate whether we should stop
+	BufferedKeygenMsg *P2pMessage   // buffered p2p message for keygen
+	ErrorMsgMap       map[string]bool
 }
 
 // tss message struct
-type Message struct {
-	From        *tsslib.PartyID   `json:"from"`
-	To          []*tsslib.PartyID `json:"to"`
-	IsBroadcast bool              `json:"is_broadcast"`
-	Bytes       []byte            `json:"bytes"`
-	Type        string            `json:"type"`
+type TssMessage struct {
+	From        *tsslib.PartyID        `json:"from"`
+	To          []*tsslib.PartyID      `json:"to"`
+	IsBroadcast bool                   `json:"is_broadcast"`
+	Bytes       []byte                 `json:"bytes"`
+	Type        string                 `json:"type"`
+	Routing     *tsslib.MessageRouting `json:"routing"`
 }
 
 // message to communicate through p2p
 // for example to register id, send tss messages through p2p, initiate keygen ...
 type P2pMessage struct {
-	TssMessage    tsslib.Message            `json:"tss_message,omitempty"`  //tss message
-	Type          string                    `json:"type,omitempty"`         //message type
-	PeerAddr      string                    `json:"peer_addr,omitempty"`    // tss peerAddr
-	Pubkey        string                    `json:"pubkey,omitempty"`       //tss party id
-	KeygenRound   string                    `json:"keygen_round,omitempty"` // keygen round
-	KeygenRequest types.GenerateKeysRequest `json:"keygen_request,omitempty"`
+	TssMsg             *TssMessage         `json:"tss_message,omitempty"`     // tss message
+	Type               string              `json:"type,omitempty"`            // message type
+	PeerAddr           string              `json:"peer_addr,omitempty"`       // tss peerAddr
+	Pubkey             string              `json:"pubkey,omitempty"`          // tss party id
+	Round              string              `json:"round,omitempty"`           // keygen round
+	KeysignRequest     *SignMessageRequest `json:"keysign_request,omitempty"` // message to sign
+	Si                 *big.Int            `json:"si,omitempty"`              // si for one round signing
+	PartyID            *tsslib.PartyID     `json:"party_id,omitempty"`
+	Time               int64               `json:"sent_time,omitempty"`           // sent time, to avoid filtering (for start keygen msg)
+	CommunicationError CommunicationError  `json:"communication_error,omitempty"` // when communication error got
 }
 
-func NewTssKeyGen(partyID int, logger *zap.Logger) *TssKeyGen {
-	return &TssKeyGen{}
-}
-
-// Response keygen response
-type Response struct {
-	Key *keygen.LocalPartySaveData `json:"pubkey"`
-}
-
-type BulkWireMsg struct {
-	WiredBulkMsgs []byte
-	MsgIdentifier string
-	Routing       *tsslib.MessageRouting
+// to detect in which operation error was occured
+type P2pMessageSimple struct {
+	Type   string `json:"type,omitempty"`   // message type
+	Pubkey string `json:"pubkey,omitempty"` // tss party id
 }

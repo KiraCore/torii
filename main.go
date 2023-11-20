@@ -5,10 +5,7 @@ import (
 	"github.com/saiset-co/saiService"
 )
 
-var id int
-
 func main() {
-
 	svc := saiService.NewService("sekai-bridge")
 	is := internal.InternalService{Context: svc.Context}
 

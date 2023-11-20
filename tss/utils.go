@@ -1,12 +1,16 @@
 package tss
 
 import (
+	"crypto/elliptic"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 
 	"github.com/binance-chain/tss-lib/tss"
-	"go.uber.org/zap"
+	"github.com/btcsuite/btcd/btcec"
 )
 
 // convert simple pubkey (id) string to tss.PartyID
@@ -17,9 +21,18 @@ func PubkeyToPartyID(pubkey string) *tss.PartyID {
 	return partyID
 }
 
-func (t *TssKeyGen) GetParties(keys []string, localPartyKey string) ([]*tss.PartyID, *tss.PartyID, error) {
+func (t *TssServer) GetParties(localPartyKey string) ([]*tss.PartyID, *tss.PartyID, error) {
 	var localPartyID *tss.PartyID
 	var unSortedPartiesID []*tss.PartyID
+
+	keys := make([]string, 0)
+	t.RWMutex.RLock()
+	for pubkey := range t.ConnectionStorage {
+		keys = append(keys, pubkey)
+	}
+	t.RWMutex.RUnlock()
+
+	keys = append(keys, t.Pubkey)
 	for _, item := range keys {
 		// simple ids used
 		mon := fmt.Sprintf("moniker_%s", item)
@@ -31,21 +44,6 @@ func (t *TssKeyGen) GetParties(keys []string, localPartyKey string) ([]*tss.Part
 		}
 
 		unSortedPartiesID = append(unSortedPartiesID, partyID)
-
-		// pk, err := sdk.UnmarshalPubKey(sdk.AccPK, item)
-		// if err != nil {
-		// 	return nil, nil, fmt.Errorf("fail to get account pub key address(%s): %w", item, err)
-		// }
-		// key := new(big.Int).SetBytes(pk.Bytes())
-		// // Set up the parameters
-		// // Note: The `id` and `moniker` fields are for convenience to allow you to easily track participants.
-		// // The `id` should be a unique string representing this party in the network and `moniker` can be anything (even left blank).
-		// // The `uniqueKey` is a unique identifying key for this peer (such as its p2p public key) as a big.Int.
-		// partyID := tss.NewPartyID(strconv.Itoa(idx), "", key)
-		// if item == localPartyKey {
-		// 	localPartyID = partyID
-		// }
-		// unSortedPartiesID = append(unSortedPartiesID, partyID)
 	}
 
 	if localPartyID == nil {
@@ -54,6 +52,8 @@ func (t *TssKeyGen) GetParties(keys []string, localPartyKey string) ([]*tss.Part
 
 	partiesID := tss.SortPartyIDs(unSortedPartiesID)
 
+	//	t.Logger.Info("sorted order", zap.Any("keys", partiesID.Keys()))
+
 	for _, partyID := range partiesID {
 		t.PartiesMap[*partyID] = true
 	}
@@ -61,17 +61,59 @@ func (t *TssKeyGen) GetParties(keys []string, localPartyKey string) ([]*tss.Part
 }
 
 // get party id address
-func (t *TssKeyGen) GetPartyIDpeerAddr() []string {
-	addrs := make([]string, 0)
+func GetPeersAddresses(connStorage map[string]string) []string {
+	mu := new(sync.RWMutex)
 
-	for partyID := range t.PartiesMap {
-		id := partyID.Id
-		addr, ok := t.ConnectionStorage[id]
-		if !ok {
-			t.Logger.Error("tss -> utils -> id from PartyID map was not found", zap.String("id", id))
-			continue
-		}
+	addrs := make([]string, 0)
+	mu.RLock()
+	for _, addr := range connStorage {
 		addrs = append(addrs, addr)
 	}
+	mu.RUnlock()
+	// for partyID := range t.PartiesMap {
+	// 	id := partyID.Id
+	// 	addr, ok := t.ConnectionStorage[id]
+	// 	if !ok {
+	// 		t.Logger.Error("tss -> utils -> id from PartyID map was not found", zap.String("id", id))
+	// 		continue
+	// 	}
+	// 	addrs = append(addrs, addr)
 	return addrs
+}
+
+func MsgToHashInt(msg []byte) (*big.Int, error) {
+	return hashToInt(msg, btcec.S256()), nil
+}
+
+func MsgToHashString(msg []byte) (string, error) {
+	if len(msg) == 0 {
+		return "", errors.New("empty message")
+	}
+	h := sha256.New()
+	_, err := h.Write(msg)
+	if err != nil {
+		return "", fmt.Errorf("fail to caculate sha256 hash: %w", err)
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+func hashToInt(hash []byte, c elliptic.Curve) *big.Int {
+	orderBits := c.Params().N.BitLen()
+	orderBytes := (orderBits + 7) / 8
+	if len(hash) > orderBytes {
+		hash = hash[:orderBytes]
+	}
+
+	ret := new(big.Int).SetBytes(hash)
+	excess := len(hash)*8 - orderBits
+	if excess > 0 {
+		ret.Rsh(ret, uint(excess))
+	}
+	return ret
+}
+
+func StringToBigInt(s string) *big.Int {
+	i := new(big.Int)
+	i.SetString(s, 16)
+	return i
 }

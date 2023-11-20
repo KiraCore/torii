@@ -2,12 +2,16 @@ package internal
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/KiraCore/sekai-bridge/logger"
 	"github.com/KiraCore/sekai-bridge/tss"
+	"github.com/KiraCore/sekai-bridge/utils"
 
 	"github.com/saiset-co/saiP2P-go/config"
 	p2p "github.com/saiset-co/saiP2P-go/core"
@@ -26,15 +30,15 @@ func (is *InternalService) Init() {
 	// logger
 	l := logger.Init(is.Context.GetConfig("common.log_mode", "debug").(string))
 
-	//@TODO: change config, need partyID in it
+	// @TODO: change config, need partyID in it
 	conf, err := config.Get()
 	if err != nil {
-		logger.Logger.Fatal("config.Get", zap.Error(err))
+		l.Fatal("config.Get", zap.Error(err))
 	}
 
 	tssConf, err := GetConfig()
 	if err != nil {
-		logger.Logger.Fatal("GetConfig", zap.Error(err))
+		l.Fatal("GetConfig", zap.Error(err))
 	}
 
 	// p2p initialization
@@ -43,18 +47,24 @@ func (is *InternalService) Init() {
 	}
 
 	is.P2P = p2p.Init(conf, testFilterFunc)
-	fmt.Printf("p2p conf %+v", is.P2P.Config)
 
 	go is.P2P.Run(testFilterFunc)
 
 	// tss initialization
-	tssServer := tss.New(tssConf.Tss.Pubkey, is.P2P, l)
+	tssServer := tss.New(tssConf.Tss.Pubkey, tssConf.Tss.Parties,
+		tssConf.Tss.Threshold, tssConf.Tss.Quorum, is.P2P, l)
+
 	is.Tss = tssServer
 
-	// start keygen instance
-	tssKeygen := is.Tss.NewTssKeyGen()
-
-	is.Tss.TssKeygen = tssKeygen
+	// load key file is exists
+	key, err := utils.LoadKeyFile()
+	if err == nil {
+		is.Tss.Key = key
+		is.Tss.Logger.Info("key loaded", zap.String("pub", key.ECDSAPub.Y().String()),
+			zap.String("pub base64 encoded", base64.StdEncoding.EncodeToString(key.ECDSAPub.Bytes())))
+	} else {
+		is.Tss.Logger.Info("key was not found")
+	}
 
 	go func() {
 		for {
@@ -64,16 +74,18 @@ func (is *InternalService) Init() {
 				continue
 			}
 
-			err = is.Tss.HandleP2Pmessage(p2pMsg)
-			if err != nil {
-				is.P2P.Logger.Error("internal -> service -> Init -> HandleP2Pmessage", zap.Error(err))
+			if p2pMsg == nil {
 				continue
 			}
+
+			go is.Tss.HandleP2Pmessage(p2pMsg)
+			// is.Tss.HandleP2Pmessage(p2pMsg)
 		}
 	}()
 
-	// @TODO:something instead of time.Sleep
-	time.Sleep(5 * time.Second)
+	// we need to sleep here to have time to
+	// full tss map[pubkey]peerAddr
+	time.Sleep(1 * time.Second)
 
 	// send tss handshake to add values to map[partyID]peerAddr
 	if len(is.P2P.ConnectionStorage) > 0 {
@@ -86,10 +98,34 @@ func (is *InternalService) Init() {
 		}
 	}
 
-	//go is.Tss.EventListening()
+	// graceful shutdown
+	go func() {
+		interrupt := make(chan os.Signal, 1)
+		signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 
-	l.Debug("is.Init", zap.Any("tss", is.Tss))
-
+		for {
+			s := <-interrupt
+			var (
+				errCh    = make(chan error)
+				resultCh = make(chan bool)
+			)
+			is.P2P.Logger.Info("internal -> service -> got interrupt", zap.String("signal", s.String()))
+			is.P2P.Disconnect()                       // p2p notifying
+			go is.Tss.SendDisconnect(errCh, resultCh) // tss notifying
+			select {
+			case <-time.After(5 * time.Second): // @TODO: config value?
+				is.P2P.Logger.Info("timeout expired, exiting app.... ")
+				os.Exit(0)
+			case err := <-errCh:
+				is.P2P.Logger.Error("service -> SendDisconnect", zap.Error(err))
+				is.P2P.Logger.Info("exiting app...")
+				os.Exit(0)
+			case result := <-resultCh:
+				is.P2P.Logger.Sugar().Infof("graceful shutdown result = %t,exiting app...", result)
+				os.Exit(0)
+			}
+		}
+	}()
 }
 
 func (is InternalService) Process() {
@@ -102,12 +138,15 @@ type Config struct {
 		Slot  int      `yaml:"slot"`
 		Peers []string `yaml:"peers"`
 	} `yaml:"p2p"`
-	Http struct {
+	HTTP struct {
 		Enabled bool   `yaml:"enabled"`
 		Port    string `yaml:"port"`
 	} `yaml:"http"`
 	Tss struct {
-		Pubkey string `yaml:"pubkey"`
+		Pubkey    string `yaml:"pubkey"`
+		Parties   int    `yaml:"parties"`
+		Threshold int    `yaml:"threshold"`
+		Quorum    int    `yaml:"quorum"`
 	} `yaml:"tss"`
 
 	OnBroadcastMessageReceive []string
@@ -121,13 +160,13 @@ func GetConfig() (Config, error) {
 	yamlData, err := os.ReadFile("config.yml")
 
 	if err != nil {
-		return config, fmt.Errorf("Readfile : %w", err)
+		return config, fmt.Errorf("readfile : %w", err)
 	}
 
 	err = yaml.Unmarshal(yamlData, &config)
 
 	if err != nil {
-		return config, fmt.Errorf("Unmarshal : %w", err)
+		return config, fmt.Errorf("unmarshal : %w", err)
 	}
 	return config, nil
 }

@@ -2,6 +2,6 @@
 /dist
 /dist2
 /dist3
-/dist4
-/success_logs
+/config2.yml
+/config3.yml
 /golangci.yml
