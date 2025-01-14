@@ -1,0 +1,38 @@
+common:
+  http:
+    enabled: true
+    port: 8885
+  ws:
+    enabled: false
+    port: 9080
+  log_mode: debug
+p2p:
+  port: 9000
+  slot: 4
+  http:
+    port: 8886
+http:
+  port: 8080
+udp:
+  bufferSize: 40000
+  interval: 100ms
+peers:
+tss:
+  public_key: "1"
+  parties: 3
+  threshold: 2
+  quorum: 2
+token: "lafijsiadnm/a@@#lsa$fd8f"
+debug: true
+cache: ## cache settings
+  ttl: 120 ## ttl for entry in cache in seconds
+  clean: 240 ## when ttl expired entries should be cleaned in seconds
+sekai:
+  url: "http://sekai_server:1317"
+  wallet: "kira1607eu9vwq9rgqxje8rw96kj3av2lptv9d6w26w"
+  network: "testnet-1"
+  gas_limit: 100000
+  fee: 750
+interaction:
+  ethereum: "http://localhost:8882"
+  cosmos: "http://localhost:8884"

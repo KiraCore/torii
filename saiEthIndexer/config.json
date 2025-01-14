@@ -1,0 +1,45 @@
+{
+	"common": {
+		"http_server": {
+			"enabled": true,
+			"host": "0.0.0.0",
+			"port": "8881"
+		},
+		"socket_server": {
+			"enabled": false,
+			"host": "0.0.0.0",
+			"port": "8809"
+		},
+		"web_socket": {
+			"enabled": false,
+			"token": "1",
+			"url": "localhost:8820"
+		}
+	},
+	"specific": {
+		"geth_server": "https://data-seed-prebsc-1-s1.bnbchain.org:8545",
+		"storage": {
+			"collection": "Ethereum",
+			"token": "12345",
+			"url": "http://localhost:8880",
+			"email": "",
+			"password": ""
+		},
+		"notifier": {
+			"sender_id": "Ethereum",
+			"token": "lafijsiadnm/a@@#lsa$fd8f",
+			"url": "http://localhost:8885",
+			"email": "",
+			"password": ""
+		},
+		"start_block": 42108003,
+		"operations": ["exportTokens"],
+		"skipFailedTransactions": true,
+		"sleep":20,
+		"websocket": {
+			"token": "hv",
+			"url": "http://test-websocket:8820"
+		}
+	}
+}
+

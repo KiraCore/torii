@@ -1,0 +1,39 @@
+services:
+  node1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+      - "8885:8885"
+      - "8886:8886"
+      - "9000:9000"
+    volumes:
+      - ./config.yml:/app/config.yml
+      - ./key.json:/app/key.json
+  node2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - node1
+    ports:
+      - "8081:8081"
+      - "8887:8887"
+      - "8888:8888"
+    volumes:
+      - ./config2.yml:/app/config.yml
+      - ./key2.json:/app/key.json
+  node3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - node1
+    ports:
+      - "8082:8082"
+      - "8889:8889"
+      - "8890:8890"
+    volumes:
+      - ./config3.yml:/app/config.yml
+      - ./key3.json:/app/key.json

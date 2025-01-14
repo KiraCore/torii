@@ -1,0 +1,8 @@
+common:
+  http:
+    enabled: true
+    port: 8884
+  ws:
+    enabled: false
+    port: 8081
+token: "lafijsiadnm/a@@#lsa$fd8f"

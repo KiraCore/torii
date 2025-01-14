@@ -1,0 +1,24 @@
+common:
+  version: "2.0"
+  socket:
+    enabled: false
+    port: 8882
+  http:
+    enabled: true
+    port: 8880
+  ws:
+    enabled: false
+    port: 8881
+storage:
+  atlas: false
+  host: "mongo-db"
+  port: "27017"
+  user: ""
+  pass: ""
+  database: "sai"
+  connectionString: ""
+  duplicate: false
+  duplicateURL: ""
+  duplicateTimeout: 400
+  duplicatePause: 3
+  duplicateMethod: "notify"

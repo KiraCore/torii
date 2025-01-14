@@ -1,0 +1,23 @@
+common:
+  http:
+    enabled: true
+    port: 8883
+  ws:
+    enabled: false
+    port: 8081
+
+storage:
+  token: "12345"
+  url: "http://localhost:8880"
+  email: "email"
+  password: "pass"
+  mongo_collection_name: "Ethereum"
+notifier:
+  token: "lafijsiadnm/a@@#lsa$fd8f"
+  url: "http://localhost:8885"
+  sender_id: "Cosmos"
+
+node_address: "http://localhost:1317"
+start_block: 857
+tx_type: "/kira.bridge.MsgChangeCosmosEthereum"
+sleep_duration: 2

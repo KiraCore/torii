@@ -1,0 +1,7 @@
+services:
+  sai-eth-interaction:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8884:8884"

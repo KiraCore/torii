@@ -1,0 +1,14 @@
+common:
+  http:
+    enabled: true
+    port: 8882
+  socket:
+    enabled: false
+    port: 9000
+  ws:
+    enabled: false
+    port: 9001
+  log_mode: "debug"
+token: "lafijsiadnm/a@@#lsa$fd8f"
+specific:
+  eth_server: "https://data-seed-prebsc-1-s1.bnbchain.org:8545"

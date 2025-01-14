@@ -1,0 +1,13 @@
+version: '3'
+services:
+
+  sai-eth-indexer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8884:8884"
+    volumes:
+        - ./block.data:/srv/block.data
+        - ./config.json:/srv/config/config.json
+        - ./contracts.json:/srv/config/contracts.json
