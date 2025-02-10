@@ -9,8 +9,8 @@ services:
       - "8886:8886"
       - "9000:9000"
     volumes:
-      - ./config.yml:/app/config.yml
-      - ./key.json:/app/key.json
+      - ./sekai_bridge/config.yml:/app/config.yml
+      - ./sekai_bridge/key.json:/app/key.json
   sekai_bridge_node2:
     build:
       context: ./sekai_bridge
@@ -22,8 +22,8 @@ services:
       - "8887:8887"
       - "8888:8888"
     volumes:
-      - ./config2.yml:/app/config.yml
-      - ./key2.json:/app/key.json
+      - ./sekai_bridge/config2.yml:/app/config.yml
+      - ./sekai_bridge/key2.json:/app/key.json
   sekai_bridge_node3:
     build:
       context: ./sekai_bridge
@@ -35,8 +35,8 @@ services:
       - "8889:8889"
       - "8890:8890"
     volumes:
-      - ./config3.yml:/app/config.yml
-      - ./key3.json:/app/key.json
+      - ./sekai_bridge/config3.yml:/app/config.yml
+      - ./sekai_bridge/key3.json:/app/key.json
 
   sai-eth-indexer:
     build:
@@ -45,9 +45,9 @@ services:
     ports:
       - "8881:8881"
     volumes:
-      - ./block.data:/srv/block.data
-      - ./config.json:/srv/config/config.json
-      - ./contracts.json:/srv/config/contracts.json
+      - ./saiEthIndexer/block.data:/srv/block.data
+      - ./saiEthIndexer/config.json:/srv/config/config.json
+      - ./saiEthIndexer/contracts.json:/srv/config/contracts.json
 
   sai-eth-interaction:
     build:
@@ -63,7 +63,7 @@ services:
     ports:
       - "8883:8883"
     volumes:
-      - ./config.yml:/srv/config.yml
+      - ./sai-cosmos-indexer/config.yml:/srv/config.yml
 
   sai-cosmos-interaction:
     build:
@@ -72,7 +72,7 @@ services:
     ports:
       - "8884:8884"
     volumes:
-      - ./config.yml:/srv/config.yml
+      - ./sai-cosmos-interaction/config.yml:/srv/config.yml
 
   sai-storage:
     build:
