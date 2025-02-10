@@ -15,7 +15,7 @@ WORKDIR /srv
 COPY --from=BUILD /src/sai-storage-bin /srv/sai-storage-bin
 
 # Copy other files
-COPY ./config.yml /srv/config.yml
+#COPY ./config.yml /srv/config.yml
 
 RUN chmod +x /srv/sai-storage-bin
 
