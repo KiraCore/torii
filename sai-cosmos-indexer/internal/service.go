@@ -3,7 +3,6 @@ package internal
 import (
 	"bytes"
 	"errors"
-	"github.com/saiset-co/saiCosmosIndexer/utils"
 	"net/http"
 	"os"
 	"strconv"
@@ -11,13 +10,14 @@ import (
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/saiset-co/sai-storage-mongo/external/adapter"
-
-	"github.com/saiset-co/sai-service-crud-plus/logger"
-	"github.com/saiset-co/saiCosmosIndexer/internal/model"
-	"github.com/saiset-co/saiService"
 	"github.com/spf13/cast"
 	"go.uber.org/zap"
+
+	"github.com/saiset-co/sai-storage-mongo/external/adapter"
+	"github.com/saiset-co/saiCosmosIndexer/internal/model"
+	"github.com/saiset-co/saiCosmosIndexer/logger"
+	"github.com/saiset-co/saiCosmosIndexer/utils"
+	"github.com/saiset-co/saiService"
 )
 
 const (
@@ -30,17 +30,17 @@ type InternalService struct {
 	Context       *saiService.Context
 	config        model.ServiceConfig
 	currentBlock  int64
-	client        http.Client
 	addresses     map[string]struct{}
 	storageConfig model.StorageConfig
 	notifier      Notifier
+	client        http.Client
 }
 
 func (is *InternalService) Init() {
 	is.mu = &sync.Mutex{}
-	is.client = http.Client{
-		//Timeout: 5 * time.Second,
-	}
+	is.config = model.ServiceConfig{}
+	is.client = http.Client{}
+
 	is.addresses = make(map[string]struct{})
 	is.config.TxType = cast.ToString(is.Context.GetConfig("tx_type", ""))
 	is.config.NodeAddress = cast.ToString(is.Context.GetConfig("node_address", ""))
