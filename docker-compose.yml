@@ -1,0 +1,88 @@
+services:
+  sekai_bridge_node1:
+    build:
+      context: ./sekai_bridge
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+      - "8885:8885"
+      - "8886:8886"
+      - "9000:9000"
+    volumes:
+      - ./config.yml:/app/config.yml
+      - ./key.json:/app/key.json
+  sekai_bridge_node2:
+    build:
+      context: ./sekai_bridge
+      dockerfile: Dockerfile
+    depends_on:
+      - sekai_bridge_node1
+    ports:
+      - "8081:8081"
+      - "8887:8887"
+      - "8888:8888"
+    volumes:
+      - ./config2.yml:/app/config.yml
+      - ./key2.json:/app/key.json
+  sekai_bridge_node3:
+    build:
+      context: ./sekai_bridge
+      dockerfile: Dockerfile
+    depends_on:
+      - sekai_bridge_node1
+    ports:
+      - "8082:8082"
+      - "8889:8889"
+      - "8890:8890"
+    volumes:
+      - ./config3.yml:/app/config.yml
+      - ./key3.json:/app/key.json
+
+  sai-eth-indexer:
+    build:
+      context: ./saiEthIndexer
+      dockerfile: Dockerfile
+    ports:
+      - "8881:8881"
+    volumes:
+      - ./block.data:/srv/block.data
+      - ./config.json:/srv/config/config.json
+      - ./contracts.json:/srv/config/contracts.json
+
+  sai-eth-interaction:
+    build:
+      context: ./saiETHContractInteraction
+      dockerfile: Dockerfile
+    ports:
+      - "8882:8882"
+
+  sai-cosmos-indexer:
+    build:
+      context: ./sai-cosmos-indexer
+      dockerfile: Dockerfile
+    ports:
+      - "8883:8883"
+
+  sai-cosmos-interaction:
+    build:
+      context: ./sai-cosmos-interaction
+      dockerfile: Dockerfile
+    ports:
+      - "8884:8884"
+
+  sai-storage:
+    build:
+      context: ./sai-storage-mongo
+      dockerfile: Dockerfile
+    ports:
+      - 8880:8880
+    depends_on:
+      - mongo-db
+
+  mongo-db:
+    image: mongo:latest
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data: { }
