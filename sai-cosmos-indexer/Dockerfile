@@ -18,4 +18,4 @@ COPY --from=BUILD /src/sai-cosmos-indexer /srv/
 RUN chmod +x /srv/sai-cosmos-indexer
 
 # Set command to run your binary
-CMD /srv/sai-cosmos-indexer --debug
+CMD /srv/sai-cosmos-indexer start
