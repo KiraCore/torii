@@ -13,7 +13,7 @@ WORKDIR /srv
 RUN apt-get update && apt-get -y install ca-certificates
 
 # Copy binary from build stage
-COPY --from=BUILD /src/cmd/app/sai-cosmos-indexer /srv/
+COPY --from=BUILD /src/sai-cosmos-indexer /srv/
 
 RUN chmod +x /srv/sai-cosmos-indexer
 
