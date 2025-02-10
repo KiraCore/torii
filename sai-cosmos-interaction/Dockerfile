@@ -18,4 +18,4 @@ COPY --from=BUILD /src/sai-cosmos-interaction /srv/
 RUN chmod +x /srv/sai-cosmos-interaction
 
 # Set command to run your binary
-CMD /srv/sai-cosmos-interaction --debug
+CMD /srv/sai-cosmos-interaction start
