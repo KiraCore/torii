@@ -62,6 +62,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8883:8883"
+    volumes:
+      - ./config.yml:/srv/config.yml
 
   sai-cosmos-interaction:
     build:
@@ -69,6 +71,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8884:8884"
+    volumes:
+      - ./config.yml:/srv/config.yml
 
   sai-storage:
     build:
