@@ -46,8 +46,8 @@ services:
       - "8881:8881"
     volumes:
       - ./saiEthIndexer/block.data:/srv/block.data
-      - ./saiEthIndexer/config.json:/srv/config/config.json
-      - ./saiEthIndexer/contracts.json:/srv/config/contracts.json
+      - ./saiEthIndexer/config.json:/srv/config.json
+      - ./saiEthIndexer/contracts.json:/srv/contracts.json
 
   sai-eth-interaction:
     build:
@@ -55,6 +55,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8882:8882"
+    volumes:
+      - ./saiETHContractInteraction/config.yml:/srv/config.yml
 
   sai-cosmos-indexer:
     build:
@@ -82,6 +84,9 @@ services:
       - 8880:8880
     depends_on:
       - mongo-db
+    volumes:
+      - ./sai-storage-mongo/config.yml:/srv/config.yml
+
 
   mongo-db:
     image: mongo:latest
