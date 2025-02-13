@@ -1,36 +1,35 @@
 services:
-  sekai_bridge_node1:
+#  sekai_bridge_node1:
+#    build:
+#      context: ./sekai_bridge
+#      dockerfile: Dockerfile
+#    ports:
+#      - "8080:8080"
+#    expose:
+#      - "8885:8885"
+#      - "8886:8886"
+#      - "9000:9000"
+#    volumes:
+#      - ./sekai_bridge/config.yml:/app/config.yml
+#      - ./sekai_bridge/key.json:/app/key.json
+#  sekai_bridge_node2:
+#    build:
+#      context: ./sekai_bridge
+#      dockerfile: Dockerfile
+#    depends_on:
+#      - sekai_bridge_node1
+#    expose:
+#      - "8081:8081"
+#      - "8887:8887"
+#      - "8888:8888"
+#    volumes:
+#      - ./sekai_bridge/config2.yml:/app/config.yml
+#      - ./sekai_bridge/key2.json:/app/key.json
+  sekai_bridge_node:
     build:
       context: ./sekai_bridge
       dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
-      - "8885:8885"
-      - "8886:8886"
-      - "9000:9000"
-    volumes:
-      - ./sekai_bridge/config.yml:/app/config.yml
-      - ./sekai_bridge/key.json:/app/key.json
-  sekai_bridge_node2:
-    build:
-      context: ./sekai_bridge
-      dockerfile: Dockerfile
-    depends_on:
-      - sekai_bridge_node1
-    ports:
-      - "8081:8081"
-      - "8887:8887"
-      - "8888:8888"
-    volumes:
-      - ./sekai_bridge/config2.yml:/app/config.yml
-      - ./sekai_bridge/key2.json:/app/key.json
-  sekai_bridge_node3:
-    build:
-      context: ./sekai_bridge
-      dockerfile: Dockerfile
-    depends_on:
-      - sekai_bridge_node1
-    ports:
+    expose:
       - "8082:8082"
       - "8889:8889"
       - "8890:8890"
@@ -42,7 +41,7 @@ services:
     build:
       context: ./saiEthIndexer
       dockerfile: Dockerfile
-    ports:
+    expose:
       - "8881:8881"
     volumes:
       - ./saiEthIndexer/block.data:/srv/block.data
@@ -53,7 +52,7 @@ services:
     build:
       context: ./saiETHContractInteraction
       dockerfile: Dockerfile
-    ports:
+    expose:
       - "8882:8882"
     volumes:
       - ./saiETHContractInteraction/config.yml:/srv/config.yml
@@ -62,7 +61,7 @@ services:
     build:
       context: ./sai-cosmos-indexer
       dockerfile: Dockerfile
-    ports:
+    expose:
       - "8883:8883"
     volumes:
       - ./sai-cosmos-indexer/config.yml:/srv/config.yml
@@ -71,7 +70,7 @@ services:
     build:
       context: ./sai-cosmos-interaction
       dockerfile: Dockerfile
-    ports:
+    expose:
       - "8884:8884"
     volumes:
       - ./sai-cosmos-interaction/config.yml:/srv/config.yml
@@ -80,8 +79,8 @@ services:
     build:
       context: ./sai-storage-mongo
       dockerfile: Dockerfile
-    ports:
-      - 8880:8880
+    expose:
+      - "8880:8880"
     depends_on:
       - mongo-db
     volumes:
