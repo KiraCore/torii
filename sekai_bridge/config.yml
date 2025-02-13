@@ -28,7 +28,7 @@ cache: ## cache settings
   ttl: 120 ## ttl for entry in cache in seconds
   clean: 240 ## when ttl expired entries should be cleaned in seconds
 sekai:
-  url: "http://sekai_server:1317"
+  url: "http://localhost:1317"
   wallet: "kira1607eu9vwq9rgqxje8rw96kj3av2lptv9d6w26w"
   network: "testnet-1"
   gas_limit: 100000
