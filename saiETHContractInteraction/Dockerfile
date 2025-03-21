@@ -1,29 +1,22 @@
-# Build stage
-ARG SERVICE=sai-eth-interaction
-
 FROM golang as BUILD
-
-ARG SERVICE
 
 WORKDIR /src/
 
 COPY ./ /src/
 
-RUN go build -o $SERVICE -buildvcs=false
+RUN go build -o sai-eth-interaction -buildvcs=false
 
 FROM ubuntu
-
-ARG SERVICE
 
 WORKDIR /srv
 
 # Copy binary from build stage
-COPY --from=BUILD /src/$SERVICE /srv/$SERVICE
+COPY --from=BUILD /src/sai-eth-interaction /srv/sai-eth-interaction
 
 # Copy other files
-COPY ./config.yml /srv/config.yml
+#COPY ./config.yml /srv/config.yml
 
-RUN chmod +x /srv/$SERVICE
+RUN chmod +x /srv/sai-eth-interaction
 
 # Set command to run your binary
-CMD /srv/$SERVICE start
+CMD /srv/sai-eth-interaction start

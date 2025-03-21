@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/cosmos/cosmos-sdk/types"
-	"github.com/saiset-co/sai-service-crud-plus/logger"
+	"github.com/saiset-co/saiCosmosInteraction/logger"
 	"github.com/saiset-co/saiCosmosInteraction/internal"
 	"github.com/saiset-co/saiService"
 )
