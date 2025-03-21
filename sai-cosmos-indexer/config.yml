@@ -14,7 +14,7 @@ storage:
   mongo_collection_name: "Cosmos"
 notifier:
   token: "lafijsiadnm/a@@#lsa$fd8f"
-  url: "http://sekai_bridge_node1:8885"
+  url: "http://sekai_bridge_node:8885"
   sender_id: "Cosmos"
 
 node_address: "http://sekai.local:1317"
