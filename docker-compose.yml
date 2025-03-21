@@ -26,6 +26,7 @@ services:
 #      - ./sekai_bridge/config2.yml:/app/config.yml
 #      - ./sekai_bridge/key2.json:/app/key.json
   sekai_bridge_node:
+    restart: always
     build:
       context: ./sekai_bridge
       dockerfile: Dockerfile
@@ -33,11 +34,14 @@ services:
       - "8082:8082"
       - "8889:8889"
       - "8890:8890"
+    ports:
+      - "9000:9000/udp"
     volumes:
       - ./sekai_bridge/config3.yml:/app/config.yml
       - ./sekai_bridge/key3.json:/app/key.json
 
   sai-eth-indexer:
+    restart: always
     build:
       context: ./saiEthIndexer
       dockerfile: Dockerfile
@@ -49,6 +53,7 @@ services:
       - ./saiEthIndexer/contracts.json:/srv/contracts.json
 
   sai-eth-interaction:
+    restart: always
     build:
       context: ./saiETHContractInteraction
       dockerfile: Dockerfile
@@ -58,6 +63,7 @@ services:
       - ./saiETHContractInteraction/config.yml:/srv/config.yml
 
   sai-cosmos-indexer:
+    restart: always
     build:
       context: ./sai-cosmos-indexer
       dockerfile: Dockerfile
@@ -67,6 +73,7 @@ services:
       - ./sai-cosmos-indexer/config.yml:/srv/config.yml
 
   sai-cosmos-interaction:
+    restart: always
     build:
       context: ./sai-cosmos-interaction
       dockerfile: Dockerfile
@@ -76,6 +83,7 @@ services:
       - ./sai-cosmos-interaction/config.yml:/srv/config.yml
 
   sai-storage:
+    restart: always
     build:
       context: ./sai-storage-mongo
       dockerfile: Dockerfile
@@ -88,6 +96,7 @@ services:
 
 
   mongo-db:
+    restart: always
     image: mongo:latest
     volumes:
       - mongo_data:/data/db

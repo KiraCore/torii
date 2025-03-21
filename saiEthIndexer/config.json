@@ -28,7 +28,7 @@
 		"notifier": {
 			"sender_id": "Ethereum",
 			"token": "lafijsiadnm/a@@#lsa$fd8f",
-			"url": "http://sekai_bridge_node1:8885",
+			"url": "http://sekai_bridge_node:8885",
 			"email": "",
 			"password": ""
 		},

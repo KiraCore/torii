@@ -1,4 +1,4 @@
-common:
+``common:
   http:
     enabled: true
     port: 8888
@@ -17,7 +17,7 @@ udp:
   bufferSize: 40000
   interval: 100ms
 peers:
-  - node1:9000
+  - 157.180.16.117:9000
 tss:
   public_key: "2"
   parties: 3
