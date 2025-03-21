@@ -9,7 +9,9 @@ require (
 	github.com/saiset-co/sai-storage-mongo v1.1.4
 	github.com/saiset-co/saiP2P-go v1.0.2
 	github.com/saiset-co/saiService v0.1.1
+	github.com/spf13/cast v1.5.0
 	github.com/tendermint/tendermint v0.35.9
+	go.mongodb.org/mongo-driver v1.13.1
 //gitlab.com/thorchain/tss/tss-lib v0.1.5
 )
 
