@@ -34,5 +34,10 @@ sekai:
   gas_limit: 100000
   fee: 750
 interaction:
-  ethereum: "http://localhost:8882"
-  cosmos: "http://localhost:8884"
+  ethereum: "http://sai-eth-interaction:8882"
+  cosmos: "http://sai-cosmos-interaction:8884"
+storage:
+  token: "12345"
+  url: "http://sai-storage:8880"
+  email: ""
+  password: ""

@@ -21,14 +21,14 @@
 		"storage": {
 			"collection": "Ethereum",
 			"token": "12345",
-			"url": "http://localhost:8880",
+			"url": "http://sai-storage:8880",
 			"email": "",
 			"password": ""
 		},
 		"notifier": {
 			"sender_id": "Ethereum",
 			"token": "lafijsiadnm/a@@#lsa$fd8f",
-			"url": "http://localhost:8885",
+			"url": "http://sekai_bridge_node1:8885",
 			"email": "",
 			"password": ""
 		},

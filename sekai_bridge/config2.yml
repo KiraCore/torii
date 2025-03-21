@@ -29,5 +29,10 @@ cache: ## cache settings
   ttl: 120 ## ttl for entry in cache in seconds
   clean: 240 ## when ttl expired entries should be cleaned in seconds
 interaction:
-  ethereum: "http://localhost:8882"
-  cosmos: "http://localhost:8884"
+  ethereum: "http://sai-eth-interaction:8882"
+  cosmos: "http://sai-cosmos-interaction:8884"
+storage:
+  token: "12345"
+  url: "http://sai-storage:8880"
+  email: ""
+  password: ""

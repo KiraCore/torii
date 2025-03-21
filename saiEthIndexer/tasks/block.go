@@ -243,6 +243,12 @@ func (bm *BlockManager) HandleTransactions(trs []ethrpc.Transaction, receipts ma
 					//	continue
 					//}
 
+					err = bm.repo.Create(data)
+					if err != nil {
+						bm.logger.Error("block manager - handle transaction - bm.repo.Create", zap.String("tx_hash", trs[j].Hash), zap.Error(err))
+						continue
+					}
+
 					err = bm.notifier.SendTx(data)
 					if err != nil {
 						bm.logger.Error("block manager - send notification - bm.notifier.SendTx", zap.String("tx_hash", trs[j].Hash), zap.Error(err))
@@ -250,12 +256,6 @@ func (bm *BlockManager) HandleTransactions(trs []ethrpc.Transaction, receipts ma
 					}
 				}
 			}
-
-			//err = bm.repo.Create(data)
-			//if err != nil {
-			//	bm.logger.Error("block manager - handle transaction - bm.repo.Create", zap.String("tx_hash", trs[j].Hash), zap.Error(err))
-			//	continue
-			//}
 
 			bm.logger.Sugar().Infof("%d transaction from %s to %s has been updated.\n", trs[j].TransactionIndex, trs[j].From, trs[j].To)
 		}

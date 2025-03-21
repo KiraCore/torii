@@ -9,6 +9,8 @@ import (
 	"github.com/KiraCore/sekai-bridge/utils"
 	"github.com/go-playground/validator"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/saiset-co/sai-storage-mongo/external/adapter"
+	"go.mongodb.org/mongo-driver/bson"
 	"math/big"
 	"net/http"
 	"strings"
@@ -102,6 +104,22 @@ func (is *InternalService) NewHandler() saiService.Handler {
 				return is.handleTransaction(data, meta)
 			},
 		},
+		"logs": saiService.HandlerElement{
+			Name:        "logs",
+			Description: "Get logs from storage",
+			Function: func(data, meta interface{}) (interface{}, int, error) {
+				tokenIsValid, err := is.validateToken(meta)
+				if err != nil {
+					return "", http.StatusInternalServerError, err
+				}
+
+				if !tokenIsValid {
+					return "", http.StatusInternalServerError, errors.New("token doe not valid")
+				}
+
+				return is.logs(data, meta)
+			},
+		},
 	}
 }
 
@@ -131,6 +149,63 @@ func (is *InternalService) sign(data interface{}) (interface{}, int, error) {
 	response, err := is.Tss.Sign(&request)
 	if err != nil {
 		return "sign error", 500, err
+	}
+
+	return response, 200, nil
+}
+
+func (is *InternalService) logs(data, meta interface{}) (interface{}, int, error) {
+	var request logsRequest
+	var err error
+
+	response := struct {
+		cosmos   interface{}
+		ethereum interface{}
+	}{}
+
+	dataJSON, err := json.Marshal(data)
+	if err != nil {
+		return "marshaling error", 500, err
+	}
+
+	err = json.Unmarshal(dataJSON, &request)
+	if err != nil {
+		return "un-marshaling error", 500, err
+	}
+
+	selectData := bson.M{"$or": bson.A{
+		bson.M{"From": request.Address},
+		bson.M{"To": request.Address},
+	}}
+
+	cosmosStorageRequest := adapter.Request{
+		Method: "read",
+		Data: adapter.ReadRequest{
+			Collection:    "Cosmos",
+			Select:        selectData,
+			Options:       &adapter.Options{},
+			IncludeFields: []string{""},
+		},
+	}
+
+	response.cosmos, err = is.Storage.Send(cosmosStorageRequest)
+	if err != nil {
+		return nil, 500, err
+	}
+
+	ethereumStorageRequest := adapter.Request{
+		Method: "read",
+		Data: adapter.ReadRequest{
+			Collection:    "Cosmos",
+			Select:        selectData,
+			Options:       &adapter.Options{},
+			IncludeFields: []string{""},
+		},
+	}
+
+	response.ethereum, err = is.Storage.Send(ethereumStorageRequest)
+	if err != nil {
+		return nil, 500, err
 	}
 
 	return response, 200, nil
@@ -352,6 +427,10 @@ type verifyRequest struct {
 
 type verifyResponse struct {
 	Valid bool `json:"is_valid"`
+}
+
+type logsRequest struct {
+	Address string `json:"address"`
 }
 
 type EthereumTx struct {

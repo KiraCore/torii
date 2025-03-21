@@ -8,16 +8,16 @@ common:
 
 storage:
   token: "12345"
-  url: "http://localhost:8880"
+  url: "http://sai-storage:8880"
   email: "email"
   password: "pass"
-  mongo_collection_name: "Ethereum"
+  mongo_collection_name: "Cosmos"
 notifier:
   token: "lafijsiadnm/a@@#lsa$fd8f"
-  url: "http://localhost:8885"
+  url: "http://sekai_bridge_node1:8885"
   sender_id: "Cosmos"
 
-node_address: "http://localhost:1317"
+node_address: "http://sekai.local:1317"
 start_block: 857
 tx_type: "/kira.bridge.MsgChangeCosmosEthereum"
 sleep_duration: 2

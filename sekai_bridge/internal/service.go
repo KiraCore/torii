@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"encoding/base64"
+	"github.com/spf13/cast"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"github.com/KiraCore/sekai-bridge/utils"
 	"github.com/gorilla/mux"
 
+	"github.com/saiset-co/sai-storage-mongo/external/adapter"
 	"github.com/saiset-co/saiP2P-go/config"
 	p2p "github.com/saiset-co/saiP2P-go/core"
 	"github.com/saiset-co/saiService"
@@ -26,11 +28,17 @@ type InternalService struct {
 	P2P     *p2p.Core
 	Tss     *tss.TssServer
 	Logger  *zap.Logger
+	Storage adapter.SaiStorage
 }
 
 func (is *InternalService) Init() {
 	// logger
 	is.Logger = logger.Init(is.Context.GetConfig("common.log_mode", "debug").(string))
+
+	is.Storage = adapter.SaiStorage{
+		Token: cast.ToString(is.Context.GetConfig("storage.token", "")),
+		Url:   cast.ToString(is.Context.GetConfig("storage.url", "")),
+	}
 
 	// @TODO: change config, need partyID in it
 	conf, err := config.Get()

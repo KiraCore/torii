@@ -3,7 +3,6 @@ package internal
 import (
 	"bytes"
 	"errors"
-	"github.com/saiset-co/saiCosmosIndexer/utils"
 	"net/http"
 	"os"
 	"strconv"
@@ -12,12 +11,10 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/saiset-co/sai-storage-mongo/external/adapter"
-
-	"github.com/saiset-co/sai-service-crud-plus/logger"
 	"github.com/saiset-co/saiCosmosIndexer/internal/model"
+	"github.com/saiset-co/saiCosmosIndexer/utils"
 	"github.com/saiset-co/saiService"
 	"github.com/spf13/cast"
-	"go.uber.org/zap"
 )
 
 const (
@@ -30,17 +27,17 @@ type InternalService struct {
 	Context       *saiService.Context
 	config        model.ServiceConfig
 	currentBlock  int64
-	client        http.Client
 	addresses     map[string]struct{}
 	storageConfig model.StorageConfig
 	notifier      Notifier
+	client        http.Client
 }
 
 func (is *InternalService) Init() {
 	is.mu = &sync.Mutex{}
-	is.client = http.Client{
-		//Timeout: 5 * time.Second,
-	}
+	is.config = model.ServiceConfig{}
+	is.client = http.Client{}
+
 	is.addresses = make(map[string]struct{})
 	is.config.TxType = cast.ToString(is.Context.GetConfig("tx_type", ""))
 	is.config.NodeAddress = cast.ToString(is.Context.GetConfig("node_address", ""))
@@ -64,18 +61,18 @@ func (is *InternalService) Init() {
 
 	err := is.loadAddresses()
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		logger.Logger.Error("loadAddresses", zap.Error(err))
+		//logger.Logger.Error("loadAddresses", zap.Error(err))
 	}
 
 	fileBytes, err := os.ReadFile(filePathLatestBlock)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
-			logger.Logger.Error("can't read "+filePathLatestBlock, zap.Error(err))
+			//logger.Logger.Error("can't read "+filePathLatestBlock, zap.Error(err))
 		}
 	} else {
 		latestHandledBlock, err := strconv.Atoi(string(fileBytes))
 		if err != nil {
-			logger.Logger.Error("strconv.Atoi", zap.Error(err))
+			//logger.Logger.Error("strconv.Atoi", zap.Error(err))
 		}
 
 		is.currentBlock = int64(latestHandledBlock)
@@ -93,7 +90,7 @@ func (is *InternalService) Process() {
 	for {
 		select {
 		case <-is.Context.Context.Done():
-			logger.Logger.Debug("saiCosmosIndexer loop is done")
+			//logger.Logger.Debug("saiCosmosIndexer loop is done")
 			return
 		default:
 			//if len(is.addresses) == 0 {
@@ -103,7 +100,7 @@ func (is *InternalService) Process() {
 
 			latestBlockHeight, err := is.getLatestBlock()
 			if err != nil {
-				logger.Logger.Error("getLatestBlock", zap.Error(err))
+				//logger.Logger.Error("getLatestBlock", zap.Error(err))
 				time.Sleep(time.Second * sleepDuration)
 				continue
 			}
@@ -115,7 +112,7 @@ func (is *InternalService) Process() {
 
 			err = is.handleBlockTxs()
 			if err != nil {
-				logger.Logger.Error("handleBlockTxs", zap.Error(err))
+				//logger.Logger.Error("handleBlockTxs", zap.Error(err))
 				time.Sleep(time.Second * sleepDuration)
 				continue
 			}
@@ -168,10 +165,10 @@ func (is *InternalService) handleBlockTxs() error {
 		go is.sendTxNotification(txTmp)
 	}
 
-	//err = is.sendTxsToStorage(txArray)
-	//if err != nil {
-	//	return err
-	//}
+	err = is.sendTxsToStorage(txArray)
+	if err != nil {
+		return err
+	}
 
 	err = is.rewriteLastHandledBlock(is.currentBlock)
 
@@ -200,6 +197,6 @@ func (is *InternalService) sendTxsToStorage(txs []interface{}) error {
 func (is *InternalService) sendTxNotification(tx interface{}) {
 	err := is.notifier.SendTx(tx)
 	if err != nil {
-		logger.Logger.Error("is.notifier.SendTx", zap.Error(err))
+		//logger.Logger.Error("is.notifier.SendTx", zap.Error(err))
 	}
 }
