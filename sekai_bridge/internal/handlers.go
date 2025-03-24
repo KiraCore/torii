@@ -301,17 +301,42 @@ func (is *InternalService) handleTransaction(data, meta interface{}) (interface{
 		return nil, status, err
 	}
 
+	saveStorageRequest := adapter.Request{
+		Method: "create",
+		Data: adapter.CreateRequest{},
+	}
+
 	switch request.From {
 	case "Cosmos":
 		err = is.callEthContract(request.TX, signature, meta)
 		if err != nil {
 			return nil, 500, err
 		}
+
+		saveStorageRequest.Data = adapter.CreateRequest{
+			Collection:    "Cosmos",
+			Documents:     []interface{}{request.TX},
+			Options:       &adapter.Options{},
+			IncludeFields: []string{""},
+		}
+
 	case "Ethereum":
 		err = is.callCosmosContract(request.TX, signature, meta)
 		if err != nil {
 			return nil, 500, err
 		}
+
+		saveStorageRequest.Data = adapter.CreateRequest{
+			Collection:    "Ethereum",
+			Documents:     []interface{}{request.TX},
+			Options:       &adapter.Options{},
+			IncludeFields: []string{""},
+		}
+	}
+
+	_, err = is.Storage.Send(saveStorageRequest)
+	if err != nil {
+		return nil, 500, err
 	}
 
 	return data, 200, nil
