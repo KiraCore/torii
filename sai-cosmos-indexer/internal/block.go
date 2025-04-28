@@ -1,99 +1,119 @@
 package internal
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/spf13/cast"
+	"go.uber.org/zap"
+
 	"github.com/saiset-co/saiCosmosIndexer/internal/model"
+	"github.com/saiset-co/saiCosmosIndexer/logger"
 )
 
-func (is *InternalService) getLatestBlock() (int64, error) {
-	res, err := is.client.Get(is.config.NodeAddress + "/cosmos/base/tendermint/v1beta1/blocks/latest")
+func (is *InternalService) getLatestBlock() (*model.LatestBlock, error) {
+	res, err := is.makeTendermintRPCRequest("/blockchain", "max_height=1")
 	if err != nil {
-		return 0, err
+		logger.Logger.Error("getLatestBlock", zap.Error(err))
+		return nil, err
 	}
 
-	defer res.Body.Close()
-
-	bodyBytes, err := io.ReadAll(res.Body)
+	lb := new(model.LatestBlock)
+	err = jsoniter.Unmarshal(res, lb)
 	if err != nil {
-		return 0, err
+		logger.Logger.Error("getLatestBlock", zap.Error(err))
+		return nil, err
 	}
 
-	if res.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("getLatestBlock res status: %v, %s", res.StatusCode, bodyBytes)
-	}
-
-	lb := model.LatestBlock{}
-	err = jsoniter.Unmarshal(bodyBytes, &lb)
-	if err != nil {
-		return 0, err
-	}
-
-	blockHeight, err := strconv.Atoi(lb.Block.Header.Height)
-
-	return int64(blockHeight), err
+	return lb, err
 }
 
-func (is *InternalService) getBlockTxs() ([]model.TxResponse, error) {
-	const (
-		urlTemplateGetTxs = "%s/cosmos/tx/v1beta1/txs?pagination.limit=100&pagination.offset=%v&events=tx.height=%v&events=message.action='%s'"
-		paginationLimit   = 100
-	)
+func (is *InternalService) getBlockInfo() (*model.BlockInfo, error) {
+	var query = url.Values{}
+	query.Add("height", fmt.Sprintf("\"%d\"", is.currentBlock))
 
-	offset := 0
-	total := 1
-	txs := make([]model.TxResponse, 0, paginationLimit)
-	for {
-		url := fmt.Sprintf(urlTemplateGetTxs, is.config.NodeAddress, offset, is.currentBlock, is.config.TxType)
-		req, err := http.NewRequest(http.MethodGet, url, nil)
-		if err != nil {
-			return nil, err
-		}
-
-		res, err := is.client.Do(req)
-		if err != nil {
-			return nil, err
-		}
-
-		defer res.Body.Close()
-
-		bodyBytes, err := io.ReadAll(res.Body)
-		if err != nil {
-			return nil, err
-		}
-
-		if res.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("getBlockTxs res status: %v, %s", res.StatusCode, bodyBytes)
-		}
-
-		blockInfo := model.BlockTransactions{}
-		err = jsoniter.Unmarshal(bodyBytes, &blockInfo)
-		if err != nil {
-			return nil, err
-		}
-
-		if total == 0 && blockInfo.Pagination.Total != "" {
-			total, err = strconv.Atoi(blockInfo.Pagination.Total)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		txs = append(txs, blockInfo.TxResponses...)
-
-		if len(txs) == total || len(blockInfo.TxResponses) == 0 {
-			break
-		}
-
-		offset += paginationLimit
+	res, err := is.makeTendermintRPCRequest("/block", query.Encode())
+	if err != nil {
+		logger.Logger.Error("getBlockTxs", zap.Error(err))
+		return nil, err
 	}
 
-	return txs, nil
+	var blockInfo = new(model.BlockInfo)
+	err = jsoniter.Unmarshal(res, blockInfo)
+	if err != nil {
+		logger.Logger.Error("getBlockTxs", zap.Error(err))
+		return nil, err
+	}
+
+	return blockInfo, nil
+}
+
+func (is *InternalService) getBlockTxs() ([]model.Tx, error) {
+	var query = url.Values{}
+	if is.config.TxType != "" {
+		query.Add("query", fmt.Sprintf("\"tx.height=%d AND message.action='%s'\"", is.currentBlock, is.config.TxType))
+	} else {
+		query.Add("query", fmt.Sprintf("\"tx.height=%d\"", is.currentBlock))
+	}
+
+	res, err := is.makeTendermintRPCRequest("/tx_search", query.Encode())
+	if err != nil {
+		logger.Logger.Error("getBlockTxs", zap.Error(err))
+		return nil, err
+	}
+
+	blockInfo := model.BlockTransactions{}
+	err = jsoniter.Unmarshal(res, &blockInfo)
+	if err != nil {
+		logger.Logger.Error("getBlockTxs", zap.Error(err))
+		return nil, err
+	}
+
+	return blockInfo.Txs, nil
+}
+
+func (is *InternalService) makeTendermintRPCRequest(url string, query string) ([]byte, error) {
+	nodeAddress := cast.ToString(is.Context.GetConfig("node_address", ""))
+	endpoint := fmt.Sprintf("%s%s?%s", nodeAddress, url, query)
+
+	resp, err := http.Get(endpoint)
+	if err != nil {
+		logger.Logger.Error("MakeTendermintRPCRequest - Unable to connect to server", zap.Error(err))
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		logger.Logger.Error("CosmosGateway - Handle - gRPC gateway error response", zap.Error(err))
+		return nil, err
+	}
+
+	var result = new(model.RPCResponse)
+	err = json.Unmarshal(bodyBytes, &result)
+	if err != nil {
+		logger.Logger.Error("[query-network-properties] Invalid response format", zap.Error(err))
+		return nil, err
+	}
+
+	if resp.StatusCode >= 400 {
+
+		errMsg := fmt.Sprintf("gRPC gateway error: url=%s status=%d, code=%d, message=%s", endpoint, resp.StatusCode, result.ID, result.Error)
+		logger.Logger.Error("CosmosGateway - Handle - gRPC gateway error response",
+			zap.Int("status", resp.StatusCode),
+			zap.Any("code", result.ID),
+			zap.Any("message", result.Error),
+		)
+		return nil, fmt.Errorf(errMsg)
+	}
+
+	return result.Result, nil
 }
 
 func (is *InternalService) rewriteLastHandledBlock(blockHeight int64) error {

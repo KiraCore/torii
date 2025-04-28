@@ -2,7 +2,9 @@ package internal
 
 import (
 	"bytes"
+
 	jsoniter "github.com/json-iterator/go"
+
 	"github.com/saiset-co/saiCosmosIndexer/utils"
 )
 

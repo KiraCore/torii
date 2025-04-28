@@ -2,7 +2,12 @@ package internal
 
 import (
 	"bytes"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
+	sekaiapp "github.com/KiraCore/sekai/app"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"go.uber.org/zap"
 	"net/http"
 	"os"
 	"strconv"
@@ -10,11 +15,13 @@ import (
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/spf13/cast"
+
+	saiService "github.com/saiset-co/sai-service/service"
 	"github.com/saiset-co/sai-storage-mongo/external/adapter"
 	"github.com/saiset-co/saiCosmosIndexer/internal/model"
+	"github.com/saiset-co/saiCosmosIndexer/logger"
 	"github.com/saiset-co/saiCosmosIndexer/utils"
-	"github.com/saiset-co/saiService"
-	"github.com/spf13/cast"
 )
 
 const (
@@ -34,6 +41,14 @@ type InternalService struct {
 }
 
 func (is *InternalService) Init() {
+	config := sdk.GetConfig()
+	if config.GetBech32AccountAddrPrefix() != "kira" {
+		config.SetBech32PrefixForAccount("kira", "kirapub")
+		config.SetBech32PrefixForValidator("kiravaloper", "kiravaloperpub")
+		config.SetBech32PrefixForConsensusNode("kiravalcons", "kiravalconspub")
+		config.Seal()
+	}
+
 	is.mu = &sync.Mutex{}
 	is.config = model.ServiceConfig{}
 	is.client = http.Client{}
@@ -61,18 +76,18 @@ func (is *InternalService) Init() {
 
 	err := is.loadAddresses()
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		//logger.Logger.Error("loadAddresses", zap.Error(err))
+		logger.Logger.Error("loadAddresses", zap.Error(err))
 	}
 
 	fileBytes, err := os.ReadFile(filePathLatestBlock)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
-			//logger.Logger.Error("can't read "+filePathLatestBlock, zap.Error(err))
+			logger.Logger.Error("can't read "+filePathLatestBlock, zap.Error(err))
 		}
 	} else {
 		latestHandledBlock, err := strconv.Atoi(string(fileBytes))
 		if err != nil {
-			//logger.Logger.Error("strconv.Atoi", zap.Error(err))
+			logger.Logger.Error("strconv.Atoi", zap.Error(err))
 		}
 
 		is.currentBlock = int64(latestHandledBlock)
@@ -90,32 +105,36 @@ func (is *InternalService) Process() {
 	for {
 		select {
 		case <-is.Context.Context.Done():
-			//logger.Logger.Debug("saiCosmosIndexer loop is done")
+			logger.Logger.Debug("saiCosmosIndexer loop is done")
 			return
 		default:
-			//if len(is.addresses) == 0 {
-			//	time.Sleep(time.Second * sleepDuration)
-			//	continue
-			//}
-
-			latestBlockHeight, err := is.getLatestBlock()
+			latestBlock, err := is.getLatestBlock()
 			if err != nil {
-				//logger.Logger.Error("getLatestBlock", zap.Error(err))
+				logger.Logger.Error("getLatestBlock", zap.Error(err))
 				time.Sleep(time.Second * sleepDuration)
 				continue
 			}
 
-			if is.currentBlock >= latestBlockHeight {
+			lb, err := strconv.Atoi(latestBlock.LastHeight)
+			if err != nil {
+				logger.Logger.Error("getLatestBlock", zap.Error(err))
+				time.Sleep(time.Second * sleepDuration)
+				continue
+			}
+
+			if is.currentBlock >= int64(lb) {
 				time.Sleep(time.Second * sleepDuration)
 				continue
 			}
 
 			err = is.handleBlockTxs()
 			if err != nil {
-				//logger.Logger.Error("handleBlockTxs", zap.Error(err))
+				logger.Logger.Error("handleBlockTxs", zap.Error(err))
 				time.Sleep(time.Second * sleepDuration)
 				continue
 			}
+
+			logger.Logger.Debug("handleBlockTxs processed", zap.Any("block", is.currentBlock))
 
 			is.currentBlock += 1
 		}
@@ -123,54 +142,99 @@ func (is *InternalService) Process() {
 }
 
 func (is *InternalService) handleBlockTxs() error {
+	blockInfo, err := is.getBlockInfo()
+	if err != nil {
+		logger.Logger.Error("handleBlockTxs", zap.Error(err))
+		return err
+	}
+
+	err = is.sendBlockToStorage(blockInfo)
+	if err != nil {
+		logger.Logger.Error("handleBlockTxs", zap.Error(err))
+		return err
+	}
+
 	blockTxs, err := is.getBlockTxs()
 	if err != nil {
+		logger.Logger.Error("handleBlockTxs", zap.Error(err))
 		return err
 	}
 
 	var txArray []interface{}
+	encode := sekaiapp.MakeEncodingConfig()
+
 	for _, txRes := range blockTxs {
-		if is.config.SkipFailedTxs && txRes.Code != 0 {
+		if is.config.SkipFailedTxs && txRes.TxResult.Code != 0 {
 			continue
 		}
 
-		if len(txRes.Tx.Body.Messages) < 1 {
+		if len(txRes.TxResult.Events) < 1 {
 			continue
 		}
 
-		to := txRes.Tx.Body.Messages[0].ToAddress
-		from := txRes.Tx.Body.Messages[0].FromAddress
-		amount := txRes.Tx.Body.Messages[0].Amount[0].Amount
-		hash := txRes.Tx.Body.Messages[0].Hash
-
-		//_, isReceiver := is.addresses[to]
-		//_, isSender := is.addresses[from]
-		//if !isReceiver && !isSender {
-		//	continue
-		//}
-
-		txTmp := map[string]interface{}{
-			"Number": txRes.Height,
-			"Hash":   hash,
-			"From":   from,
-			"To":     to,
-			"Amount": amount,
-			"Events": txRes.Events,
-			"Status": txRes.Code,
-			"Ts":     txRes.Timestamp,
+		txBytes, err := base64.StdEncoding.DecodeString(txRes.Tx)
+		if err != nil {
+			return err
 		}
 
-		txArray = append(txArray, txTmp)
+		tx, err := encode.TxConfig.TxDecoder()(txBytes)
+		if err != nil {
+			logger.Logger.Error("handleBlockTxs", zap.Error(err))
+			continue
+		}
 
-		go is.sendTxNotification(txTmp)
+		for _, msg := range tx.GetMsgs() {
+			var message = model.Message{}
+
+			msgBytes, err := json.Marshal(msg)
+			if err != nil {
+				logger.Logger.Error("handleBlockTxs", zap.Error(err))
+				continue
+			}
+
+			err = json.Unmarshal(msgBytes, &message)
+			if err != nil {
+				logger.Logger.Error("handleBlockTxs", zap.Error(err))
+				continue
+			}
+
+			message["typeUrl"] = sdk.MsgTypeURL(msg)
+
+			txRes.Messages = append(txRes.Messages, message)
+		}
+
+		txArray = append(txArray, txRes)
+		go is.sendTxNotification(txRes)
 	}
 
-	err = is.sendTxsToStorage(txArray)
+	if len(txArray) > 0 {
+		err = is.sendTxsToStorage(txArray)
+		if err != nil {
+			logger.Logger.Error("handleBlockTxs", zap.Error(err))
+			return err
+		}
+	}
+
+	err = is.rewriteLastHandledBlock(is.currentBlock)
+
+	return err
+}
+
+func (is *InternalService) sendBlockToStorage(block interface{}) error {
+	storageRequest := adapter.Request{
+		Method: "create",
+		Data: adapter.CreateRequest{
+			Collection: is.storageConfig.Collection + "_blocks",
+			Documents:  []interface{}{block},
+		},
+	}
+
+	bodyBytes, err := jsoniter.Marshal(&storageRequest)
 	if err != nil {
 		return err
 	}
 
-	err = is.rewriteLastHandledBlock(is.currentBlock)
+	_, err = utils.SaiQuerySender(bytes.NewBuffer(bodyBytes), is.storageConfig.Url, is.storageConfig.Token)
 
 	return err
 }
@@ -179,7 +243,7 @@ func (is *InternalService) sendTxsToStorage(txs []interface{}) error {
 	storageRequest := adapter.Request{
 		Method: "create",
 		Data: adapter.CreateRequest{
-			Collection: is.storageConfig.Collection,
+			Collection: is.storageConfig.Collection + "_txs",
 			Documents:  txs,
 		},
 	}

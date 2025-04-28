@@ -3,7 +3,7 @@ package internal
 import (
 	"net/http"
 
-	"github.com/saiset-co/saiService"
+	saiService "github.com/saiset-co/sai-service/service"
 )
 
 func (is *InternalService) NewHandler() saiService.Handler {
