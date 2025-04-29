@@ -296,39 +296,40 @@ func (is *InternalService) handleTransaction(data, meta interface{}) (interface{
 	if err != nil {
 		return nil, 500, err
 	}
-	signature, status, err := is.sign(request.TX)
+
+	signature, status, err := is.sign(request.Tx)
 	if err != nil {
 		return nil, status, err
 	}
 
 	saveStorageRequest := adapter.Request{
 		Method: "create",
-		Data: adapter.CreateRequest{},
+		Data:   adapter.CreateRequest{},
 	}
 
 	switch request.From {
 	case "Cosmos":
-		err = is.callEthContract(request.TX, signature, meta)
+		err = is.callEthContract(request.Tx, signature, meta)
 		if err != nil {
 			return nil, 500, err
 		}
 
 		saveStorageRequest.Data = adapter.CreateRequest{
 			Collection:    "Cosmos",
-			Documents:     []interface{}{request.TX},
+			Documents:     []interface{}{request.Tx},
 			Options:       &adapter.Options{},
 			IncludeFields: []string{""},
 		}
 
 	case "Ethereum":
-		err = is.callCosmosContract(request.TX, signature, meta)
+		err = is.callCosmosContract(request.Tx, signature, meta)
 		if err != nil {
 			return nil, 500, err
 		}
 
 		saveStorageRequest.Data = adapter.CreateRequest{
 			Collection:    "Ethereum",
-			Documents:     []interface{}{request.TX},
+			Documents:     []interface{}{request.Tx},
 			Options:       &adapter.Options{},
 			IncludeFields: []string{""},
 		}
@@ -342,19 +343,7 @@ func (is *InternalService) handleTransaction(data, meta interface{}) (interface{
 	return data, 200, nil
 }
 
-func (is *InternalService) callEthContract(txData, signature, meta interface{}) error {
-	var tx = new(CosmosTx)
-
-	txJson, err := json.Marshal(txData)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(txJson, tx)
-	if err != nil {
-		return err
-	}
-
+func (is *InternalService) callEthContract(txData CosmosTx, signature, meta interface{}) error {
 	url := is.Context.GetConfig("interaction.ethereum", "").(string)
 
 	newRequest := types.EthInteractionRequest{
@@ -364,9 +353,9 @@ func (is *InternalService) callEthContract(txData, signature, meta interface{}) 
 			Contract: "Bridge",
 			Value:    "0",
 			Params: []types.EthInteractionParam{
-				{Type: "address", Value: tx.To},
-				{Type: "string", Value: strings.ToLower(tx.To[2:] + tx.Hash[:24])},
-				{Type: "uint256", Value: tx.Amount},
+				{Type: "address", Value: txData.Messages[0].To},
+				{Type: "string", Value: strings.ToLower(txData.Messages[0].To[2:] + txData.Hash[:24])},
+				{Type: "uint256", Value: txData.Messages[0].Amount[0].Amount},
 			},
 			Signature: signature.(*tss.SignMessageResponse).SignatureMarshalled,
 		},
@@ -432,17 +421,42 @@ func (is *InternalService) callCosmosContract(txData, signature, meta interface{
 }
 
 type CosmosTx struct {
-	From      string `json:"from"`
-	To        string `json:"to"`
-	Hash      string `json:"hash"`
-	Amount    string `json:"amount"`
-	Signature string `json:"signature"`
+	Hash     string `json:"hash" validate:"required"`
+	Height   string `json:"height" validate:"required"`
+	Index    int    `json:"index"`
+	Messages []struct {
+		Amount []struct {
+			Amount string `json:"amount" validate:"required"`
+			Denom  string `json:"denom"`
+		} `json:"amount"`
+		From    string `json:"from"`
+		Hash    string `json:"hash"`
+		To      string `json:"to"`
+		TypeUrl string `json:"typeUrl"`
+	} `json:"messages" validate:"required"`
+	Tx       string `json:"tx" validate:"required"`
+	TxResult struct {
+		Code      int    `json:"code"`
+		Codespace string `json:"codespace"`
+		Data      string `json:"data"`
+		Events    []struct {
+			Attributes []struct {
+				Index bool   `json:"index"`
+				Key   string `json:"key"`
+				Value string `json:"value"`
+			} `json:"attributes"`
+			Type string `json:"type"`
+		} `json:"events"`
+		GasUsed   string `json:"gas_used"`
+		GasWanted string `json:"gas_wanted"`
+		Info      string `json:"info"`
+		Log       string `json:"log"`
+	} `json:"tx_result"`
 }
 
 type NotificationRequest struct {
-	From      string      `json:"from"`
-	TX        interface{} `json:"tx"`
-	Signature string      `json:"signature"`
+	From string `json:"from"`
+	Tx   CosmosTx     `json:"tx"`
 }
 
 type verifyRequest struct {
