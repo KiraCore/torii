@@ -17,7 +17,7 @@ notifier:
   url: "http://sekai_bridge_node:8885"
   sender_id: "Cosmos"
 
-node_address: "http://sekai.local:1317"
+node_address: "http://sekai.local:26657"
 start_block: 857
 tx_type: "/kira.bridge.MsgChangeCosmosEthereum"
 sleep_duration: 2
