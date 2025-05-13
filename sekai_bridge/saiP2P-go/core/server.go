@@ -34,9 +34,22 @@ type AppStats struct {
 	IP                string          `json:"ip,omitempty"`
 }
 
+func (c *Core) getOutboundIP() net.IP {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		c.Logger.Warn("StartServer", zap.Error(err))
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP
+}
+
 // Server logic
 func (c *Core) Serve(filter filterConnections) (err error) {
-	serverAddr, err := net.ResolveUDPAddr("udp4", ":"+c.Config.P2P.Port)
+	mainIP := c.getOutboundIP()
+
+	serverAddr, err := net.ResolveUDPAddr("udp4", mainIP.String()+":"+c.Config.P2P.Port)
 	if err != nil {
 		return err
 	}
@@ -65,7 +78,7 @@ func (c *Core) Serve(filter filterConnections) (err error) {
 
 		//	go func(buf []byte) {
 		incomingRequest := Request{}
-		//s.L.Debug("StartServer", zap.Any("incomingRequest", incomingRequest))
+		//c.Logger.Debug("StartServer", zap.Any("incomingRequest", incomingRequest))
 		err = json.Unmarshal(buf[:n], &incomingRequest)
 		if err != nil {
 			c.Logger.Error("StartServer", zap.Error(err))

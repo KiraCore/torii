@@ -42,9 +42,11 @@ func (c *Core) ConnectToPeer() error {
 		return err
 	}
 
-	defer c.Server.Connections.Out.Close()
+	defer func() {
+		c.Server.Connections.Out.Close()
+	}()
 
-	//	c.Logger.Debug("Connect", zap.Any("request", request))
+	c.Logger.Debug("Connect", zap.Any("request", request))
 
 	err = request.Send(c.Server.Connections.Out, serverUDPAddr)
 	if err != nil {
@@ -69,12 +71,12 @@ func (c *Core) ConnectToPeer() error {
 			continue
 		}
 
-		//		c.Logger.Debug("p2p -> client -> incoming request", zap.Any("message", message))
+		c.Logger.Debug("p2p -> client -> incoming request", zap.Any("message", message))
 
 		if messageType, ok := message["type"]; ok != false {
 			switch messageType {
 			case punchResponse:
-				//			c.Logger.Debug(punchResponse, zap.Any("message", message))
+				c.Logger.Debug(punchResponse, zap.Any("message", message))
 				err := c.ClientPunchResponseHandler(message, serverIP, serverPort)
 				if err != nil {
 					continue
@@ -87,7 +89,7 @@ func (c *Core) ConnectToPeer() error {
 				}
 				//c.Logger.Debug(handshakeRequest, zap.Any("s.m", c.Server.m))
 			case handshakeResponse:
-				//c.Logger.Debug("handshakeResponse", zap.Any("message", message))
+				c.Logger.Debug("handshakeResponse", zap.Any("message", message))
 
 				err := c.ClientHandshakeResponseHandler(message, serverIP, serverPort)
 				if err != nil {
@@ -95,7 +97,7 @@ func (c *Core) ConnectToPeer() error {
 					continue
 				}
 
-				//				c.Logger.Debug(handshakeResponse, zap.Any("s.m", c.Server.m))
+				//c.Logger.Debug(handshakeResponse, zap.Any("s.m", c.Server.m))
 			case MessageRequest:
 				err := c.ClientMessageHandler(buf[0:n])
 				if err != nil {

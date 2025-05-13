@@ -343,7 +343,19 @@ func (is *InternalService) handleTransaction(data, meta interface{}) (interface{
 	return data, 200, nil
 }
 
-func (is *InternalService) callEthContract(txData CosmosTx, signature, meta interface{}) error {
+func (is *InternalService) callEthContract(txData, signature, meta interface{}) error {
+	var tx = new(CosmosTx)
+
+	txJson, err := json.Marshal(txData)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(txJson, tx)
+	if err != nil {
+		return err
+	}
+
 	url := is.Context.GetConfig("interaction.ethereum", "").(string)
 
 	newRequest := types.EthInteractionRequest{
@@ -353,9 +365,9 @@ func (is *InternalService) callEthContract(txData CosmosTx, signature, meta inte
 			Contract: "Bridge",
 			Value:    "0",
 			Params: []types.EthInteractionParam{
-				{Type: "address", Value: txData.Messages[0].To},
-				{Type: "string", Value: strings.ToLower(txData.Messages[0].To[2:] + txData.Hash[:24])},
-				{Type: "uint256", Value: txData.Messages[0].Amount[0].Amount},
+				{Type: "address", Value: tx.Messages[0].To},
+				{Type: "string", Value: strings.ToLower(tx.Messages[0].To[2:] + tx.Hash[:24])},
+				{Type: "uint256", Value: tx.Messages[0].Amount[0].Amount},
 			},
 			Signature: signature.(*tss.SignMessageResponse).SignatureMarshalled,
 		},
@@ -455,8 +467,8 @@ type CosmosTx struct {
 }
 
 type NotificationRequest struct {
-	From string `json:"from"`
-	Tx   CosmosTx     `json:"tx"`
+	From string      `json:"from"`
+	Tx   interface{} `json:"tx"`
 }
 
 type verifyRequest struct {
