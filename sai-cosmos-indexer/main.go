@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/saiset-co/saiCosmosIndexer/logger"
 	"github.com/saiset-co/saiCosmosIndexer/internal"
-	"github.com/saiset-co/saiService"
+	saiService "github.com/saiset-co/sai-service/service"
 )
 
 func main() {

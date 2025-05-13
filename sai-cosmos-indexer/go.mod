@@ -5,10 +5,12 @@ go 1.21.1
 toolchain go1.21.6
 
 require (
+        github.com/KiraCore/sekai v0.4.13
+	github.com/cosmos/cosmos-sdk v0.47.6
 	github.com/json-iterator/go v1.1.12
 	github.com/saiset-co/sai-service-crud-plus v0.0.0-20240126102508-5bab343d26fe
 	github.com/saiset-co/sai-storage-mongo v1.0.5
-	github.com/saiset-co/saiService v1.0.1
+	github.com/saiset-co/sai-service v1.0.5
 	github.com/spf13/cast v1.6.0
 	github.com/tendermint/go-amino v0.16.0
 	go.uber.org/zap v1.26.0
