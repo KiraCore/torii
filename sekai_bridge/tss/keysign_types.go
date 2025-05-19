@@ -37,7 +37,7 @@ type KeysignMsgsStorage struct { // storage for keygen msgs from another nodes
 }
 
 type SignMessageRequest struct {
-	Msg             string `json:"msg"`
+	Tx              string `json:"tx"`
 	OneRoundSigning bool   `json:"one_round_signing"`
 }
 

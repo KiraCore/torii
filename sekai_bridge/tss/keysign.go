@@ -45,7 +45,7 @@ func (t *TssServer) Sign(req *SignMessageRequest) (*SignMessageResponse, error) 
 
 	// @TODO : remove testing signature
 
-	verified := t.VerifySignature(signature, req.Msg)
+	verified := t.VerifySignature(signature, req.Tx)
 
 	t.Logger.Info("tss - sign - verify", zap.Bool("verified", verified))
 
@@ -69,7 +69,7 @@ func (t *TssKeySign) SignMessage(req *SignMessageRequest, partiesID []*tsslib.Pa
 		t.Logger.Info("tss -> keysign -> one round signing requested")
 		t.PS = signing.NewLocalPartyWithOneRoundSign(params, *key, t.OutCh, t.EndCh).(*signing.LocalParty)
 	case false:
-		convertedMsg := new(big.Int).SetBytes([]byte(req.Msg))
+		convertedMsg := new(big.Int).SetBytes([]byte(req.Tx))
 		t.PS = signing.NewLocalParty(convertedMsg, params, *key, t.OutCh, t.EndCh).(*signing.LocalParty)
 	}
 
@@ -159,7 +159,7 @@ func (t *TssServer) KeysignStartNotify(request *SignMessageRequest) error {
 
 // handle one round signing
 func (t *TssKeySign) HandleOneRoundSigning(state *signing.SignatureData, req *SignMessageRequest) (*signing.SignatureData, error) {
-	convertedMsg := new(big.Int).SetBytes([]byte(req.Msg))
+	convertedMsg := new(big.Int).SetBytes([]byte(req.Tx))
 	sI := signing.FinalizeGetOurSigShare(state, convertedMsg)
 
 	msg := P2pMessage{

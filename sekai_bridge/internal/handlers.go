@@ -134,7 +134,9 @@ func (is *InternalService) keygen() (interface{}, int, error) {
 }
 
 func (is *InternalService) sign(data interface{}) (interface{}, int, error) {
-	var request tss.SignMessageRequest
+	var request = tss.SignMessageRequest{
+		OneRoundSigning: true,
+	}
 
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
