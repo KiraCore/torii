@@ -89,10 +89,11 @@ type TxResponse struct {
 }
 
 type Tx struct {
-	Hash     string `json:"hash"`
-	Height   string `json:"height"`
-	Index    int    `json:"index"`
-	TxResult struct {
+	Timestamp time.Time `json:"timestamp"`
+	Hash      string    `json:"hash"`
+	Height    string    `json:"height"`
+	Index     int       `json:"index"`
+	TxResult  struct {
 		Code      int    `json:"code"`
 		Data      string `json:"data"`
 		Log       string `json:"log"`

@@ -4,6 +4,7 @@ type ServiceConfig struct {
 	NodeAddress    string
 	TxType         string
 	SkipFailedTxs  bool
+	HandleBlocks   bool
 	CollectionName string
 }
 
