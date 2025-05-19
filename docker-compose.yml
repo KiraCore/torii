@@ -30,15 +30,14 @@ services:
     build:
       context: ./sekai_bridge
       dockerfile: Dockerfile
-    expose:
+    ports:
       - "8082:8082"
       - "8889:8889"
       - "8890:8890"
-    ports:
       - "9000:9000/udp"
     volumes:
-      - ./sekai_bridge/config3.yml:/app/config.yml
-      - ./sekai_bridge/key3.json:/app/key.json
+      - ./sekai_bridge/config.yml:/app/config.yml
+      - ./sekai_bridge/key.json:/app/key.json
 
   sai-eth-indexer:
     restart: always
