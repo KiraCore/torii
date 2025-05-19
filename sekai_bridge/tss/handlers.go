@@ -139,7 +139,7 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 		t.NewTsskeySign(t.Parties, t.Quorum)
 
 		t.Logger.Info("tss -> HandleP2PMessage -> keysign start", zap.Int("parties", t.Parties),
-			zap.Int("quorum", t.Quorum), zap.String("msg", msg.KeysignRequest.Msg))
+			zap.Int("quorum", t.Quorum), zap.String("msg", msg.KeysignRequest.Tx))
 
 		partiesID, localPartyID, err := t.GetParties(t.Pubkey)
 		if err != nil {
