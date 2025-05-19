@@ -38,9 +38,23 @@ func (t *TssServer) Sign(req *SignMessageRequest) (*SignMessageResponse, error) 
 		return nil, fmt.Errorf("GetParties: %w", err)
 	}
 
+	if partiesID == nil || len(partiesID) == 0 {
+		t.Logger.Error("tss -> HandleP2PMessage -> KeysignStartMsgType -> partiesID is nil or empty")
+		return nil, fmt.Errorf("GetParties: %w", err)
+	}
+
+	if localPartyID == nil {
+		t.Logger.Error("tss -> HandleP2PMessage -> KeysignStartMsgType -> localPartyID is nil")
+		return nil, fmt.Errorf("GetParties: %w", err)
+	}
+
+	if t.Key.ECDSAPub == nil {
+		return nil, fmt.Errorf("ECDSAPub in signing key is nil")
+	}
+
 	signature, err := t.KeysignInstance.SignMessage(req, partiesID, localPartyID, t.Key)
 	if err != nil {
-		return nil, fmt.Errorf("KeysignInstance.Sign : %w", nil)
+		return nil, fmt.Errorf("KeysignInstance.Sign : %w", err)
 	}
 
 	// @TODO : remove testing signature
@@ -51,7 +65,7 @@ func (t *TssServer) Sign(req *SignMessageRequest) (*SignMessageResponse, error) 
 
 	data, err := json.Marshal(signature)
 	if err != nil {
-		return nil, fmt.Errorf("marshal: %w", nil)
+		return nil, fmt.Errorf("marshal: %w", err)
 	}
 
 	return &SignMessageResponse{
@@ -83,19 +97,25 @@ func (t *TssKeySign) SignMessage(req *SignMessageRequest, partiesID []*tsslib.Pa
 
 	sig, err := t.processKeySign(req, timeStart)
 	if err != nil {
-		return nil, fmt.Errorf("processKeySign : %w", nil)
+		return nil, fmt.Errorf("processKeySign : %w", err)
 	}
 	return sig, nil
 }
 
+func (t *TssKeySign) ClearKeySignMessagesStorage() {
+	t.KeysignMsgsStorage.Lock()
+	t.KeysignMsgsStorage.M = make(map[string]TssMessage)
+	t.KeysignMsgsStorage.Unlock()
+}
+
 func (t *TssKeySign) processKeySign(req *SignMessageRequest, timeStart time.Time) (*common.ECSignature, error) {
-	defer func() {
-		t.KeysignMsgsStorage.Lock()
-		t.KeysignMsgsStorage.M = make(map[string]TssMessage)
-		t.KeysignMsgsStorage.Unlock()
-	}()
+	defer t.ClearKeySignMessagesStorage()
+
 	t.Logger.Info("tss -> keysign -> keysign process started")
-	ctx, cancel := context.WithCancel(context.Background())
+	timeout := 5 * time.Minute
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
 	for {
 		select {
 		case err := <-t.ErrCh:
@@ -178,21 +198,80 @@ func (t *TssKeySign) HandleOneRoundSigning(state *signing.SignatureData, req *Si
 		return nil, fmt.Errorf("sendMsg : %w", err)
 	}
 	otherSiMap := make(map[*tsslib.PartyID]*big.Int)
+	receivedCount := 0
+	timeout := time.After(30 * time.Second)
+
 loop:
 	for {
-		siMsg := <-t.OneRoundMsgCh
-		t.Logger.Info("tss -> keysign -> one round -> got msg from another peer", zap.String("partyID", siMsg.PartyID.Id))
-		otherSiMap[siMsg.PartyID] = siMsg.Si
-		if len(otherSiMap) == t.Parties-1 {
-			t.Logger.Info("tss -> keysign -> one round -> break loop")
-			break loop
+		select {
+		case siMsg := <-t.OneRoundMsgCh:
+			// Проверим, что siMsg и его поля не равны nil
+			if siMsg == nil || siMsg.PartyID == nil || siMsg.Si == nil {
+				t.Logger.Error("tss -> keysign -> one round -> received invalid message",
+					zap.Any("siMsg", siMsg))
+				continue
+			}
+
+			t.Logger.Info("tss -> keysign -> one round -> got msg from another peer",
+				zap.String("partyID", siMsg.PartyID.Id))
+
+			// Проверим, что мы не добавляем дубликаты
+			if _, exists := otherSiMap[siMsg.PartyID]; !exists {
+				otherSiMap[siMsg.PartyID] = siMsg.Si
+				receivedCount++
+			}
+
+			if receivedCount >= t.Parties-1 {
+				t.Logger.Info("tss -> keysign -> one round -> break loop")
+				break loop
+			}
+
+		case <-timeout:
+			// Выход по таймауту, если не получили все необходимые сообщения
+			t.Logger.Error("tss -> keysign -> one round -> timeout waiting for messages",
+				zap.Int("expected", t.Parties-1),
+				zap.Int("received", receivedCount))
+			return nil, fmt.Errorf("timeout waiting for all parties to send Si values")
+		}
+	}
+
+	if state == nil {
+		return nil, fmt.Errorf("signature state is nil")
+	}
+
+	if t.Key == nil || t.Key.ECDSAPub == nil {
+		return nil, fmt.Errorf("key or ECDSAPub is nil")
+	}
+
+	pubKey := t.Key.ECDSAPub.ToECDSAPubKey()
+	if pubKey == nil {
+		return nil, fmt.Errorf("failed to convert ECDSAPub to ECDSA public key")
+	}
+
+	for partyID, si := range otherSiMap {
+		if partyID == nil {
+			return nil, fmt.Errorf("partyID in otherSiMap is nil")
+		}
+		if si == nil {
+			return nil, fmt.Errorf("si value for partyID %s is nil", partyID.Id)
 		}
 	}
 
 	signData, signature, err := signing.FinalizeGetAndVerifyFinalSig(state, t.Key.ECDSAPub.ToECDSAPubKey(),
 		convertedMsg, t.LocalPartyID, sI, otherSiMap)
-	if strings.Contains(err.Error(), errisNil) { // @TODO: error is nil always here
+	if err == nil {
 		t.Logger.Info("tss -> keysign -> one round", zap.Any("btcec.Signature", signature))
+		// Проверим, что signData не нулевой
+		if signData == nil {
+			return nil, fmt.Errorf("signature data is nil although no error was returned")
+		}
+		return signData, nil
+	} else if strings.Contains(err.Error(), errisNil) {
+		t.Logger.Info("tss -> keysign -> one round (with errisNil)", zap.Any("btcec.Signature", signature))
+		// Проверим, что signData не нулевой
+		if signData == nil {
+			return nil, fmt.Errorf("signature data is nil with errisNil: %v", err)
+		}
 		return signData, nil
 	}
 	return nil, fmt.Errorf("FinalizeGetAndVerifyFinalSig : %w", err)

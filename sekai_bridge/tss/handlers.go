@@ -85,11 +85,22 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 			return
 		}
 
+		if partiesID == nil || len(partiesID) == 0 {
+			t.Logger.Error("tss -> HandleP2PMessage -> KeysignStartMsgType -> partiesID is nil or empty")
+			return
+		}
+
+		if localPartyID == nil {
+			t.Logger.Error("tss -> HandleP2PMessage -> KeysignStartMsgType -> localPartyID is nil")
+			return
+		}
+
 		key, err := t.KeygenInstance.GenerateNewKey(partiesID, localPartyID)
 		if err != nil {
 			t.Logger.Error("tss -> HandleP2Pmessage -> GenerateNewKey", zap.Error(err))
 			return
 		}
+
 		t.Key = key
 
 	case KeygenMsgType: // for exchanging tss messages in keygen stage
@@ -116,10 +127,12 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 		if !ok {
 			t.KeygenInstance.KeygenMsgsStorage.M[key] = *msg.TssMsg
 		}
-		t.KeygenInstance.KeygenMsgsStorage.Unlock()
-		for key, _ := range t.KeygenInstance.KeygenMsgsStorage.M {
-			t.Logger.Info("KeygenMsgsStorage", zap.String("key", key))
+		// Копируем ключи для логирования внутри блокировки
+		keys := make([]string, 0, len(t.KeygenInstance.KeygenMsgsStorage.M))
+		for k := range t.KeygenInstance.KeygenMsgsStorage.M {
+			keys = append(keys, k)
 		}
+		t.KeygenInstance.KeygenMsgsStorage.Unlock()
 		return
 
 	case KeygenCancelledMsgType:
@@ -194,8 +207,8 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 			Si:      msg.Si,
 		}
 	case KeysignCancelledMsgType:
-		t.KeysignInstance.IsStarted.Store(false)
 		if t.KeysignInstance.IsStarted.Load() == true {
+			t.KeysignInstance.IsStarted.Store(false)
 			t.KeysignInstance.StopChan <- CommunicationError{
 				PeerAddr:  msg.CommunicationError.PeerAddr,
 				Operation: msg.CommunicationError.Operation,

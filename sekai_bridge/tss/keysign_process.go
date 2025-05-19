@@ -80,6 +80,9 @@ func (t *TssKeySign) ProcessOutCh(ctx context.Context, msg tsslib.Message, parti
 }
 
 func (t *TssKeySign) UpdateForRound(ctx context.Context, tssMsg *TssMessage, parties int) {
+	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+
 	var (
 		messagesCounter int // how many messages do we need at this round
 		msgType         string
@@ -98,13 +101,16 @@ func (t *TssKeySign) UpdateForRound(ctx context.Context, tssMsg *TssMessage, par
 		singleMsg = true
 	}
 
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			t.Logger.Info("keysign -> updateForRound -> got stop signal")
 			return
-		default:
-			time.Sleep(1 * time.Second)
+		case <-ticker.C:
+			//time.Sleep(1 * time.Second)
 			t.Logger.Info("UpdateForRound -> new iteration", zap.String("type", tssMsg.Type))
 			if len(t.KeysignMsgsStorage.M) == 0 {
 				t.Logger.Info("UpdateForRound -> map is empty")
@@ -112,8 +118,8 @@ func (t *TssKeySign) UpdateForRound(ctx context.Context, tssMsg *TssMessage, par
 			}
 
 			//range_loop:
-			tempMap := make(map[string]TssMessage)
 			t.KeysignMsgsStorage.Lock()
+			tempMap := make(map[string]TssMessage)
 			for key, msg := range t.KeysignMsgsStorage.M {
 				if singleMsg {
 					if msg.Type == tssMsg.Type {
@@ -166,9 +172,33 @@ func (t *TssKeySign) UpdateForRound(ctx context.Context, tssMsg *TssMessage, par
 }
 
 func (t *TssKeySign) Update(msg *TssMessage) error {
+	if msg == nil {
+		return fmt.Errorf("message is nil")
+	}
+
+	if msg.From == nil {
+		return fmt.Errorf("message.From is nil")
+	}
+
+	if msg.Bytes == nil {
+		return fmt.Errorf("message.Bytes is nil")
+	}
+
 	parsedMsg, err := tsslib.ParseWireMessage(msg.Bytes, msg.From, msg.IsBroadcast)
 	if err != nil {
 		return fmt.Errorf("ParseWireMessage : %w", err)
+	}
+
+	if parsedMsg == nil {
+		return fmt.Errorf("parsed message is nil")
+	}
+
+	if parsedMsg.GetFrom() == nil {
+		return fmt.Errorf("parsed message sender is nil")
+	}
+
+	if t.LocalPartyID == nil {
+		return fmt.Errorf("local party ID is nil")
 	}
 
 	if t.LocalPartyID.Index-1 == parsedMsg.GetFrom().Index {
@@ -178,17 +208,46 @@ func (t *TssKeySign) Update(msg *TssMessage) error {
 	if t.PS != nil {
 		t.Logger.Info("tss - PS updater started", zap.String("type", msg.Type), zap.String("from", msg.From.Id))
 		go t.SharedPartyUpdater(t.PS, parsedMsg, t.ErrCh)
+	} else {
+		return fmt.Errorf("party is nil")
 	}
+
 	return nil
 }
 
 func (t *TssKeySign) SharedPartyUpdater(party tsslib.Party, msg tsslib.Message, errCh chan<- *tsslib.Error) {
 	// time.Sleep(1 * time.Second)
 
+	if party == nil {
+		t.Logger.Error("tss -> SharedPartyUpdater -> party is nil")
+		if errCh != nil {
+			errCh <- party.WrapError(fmt.Errorf("party is nil"))
+		}
+		return
+	}
+
+	// Проверяем, что msg не nil и все необходимые методы возвращают не nil
+	if msg == nil {
+		t.Logger.Error("tss -> SharedPartyUpdater -> msg is nil")
+		if errCh != nil {
+			errCh <- party.WrapError(fmt.Errorf("message is nil"))
+		}
+		return
+	}
+
 	// do not send a message from this party back to itself
 	if party.PartyID() == msg.GetFrom() {
 		return
 	}
+
+	if msg.GetFrom() == nil {
+		t.Logger.Error("tss -> SharedPartyUpdater -> msg.GetFrom() is nil")
+		if errCh != nil {
+			errCh <- party.WrapError(fmt.Errorf("message sender is nil"))
+		}
+		return
+	}
+
 	bz, _, err := msg.WireBytes()
 	if err != nil {
 		err := fmt.Errorf(" wireBytes : %w", err)
@@ -196,11 +255,13 @@ func (t *TssKeySign) SharedPartyUpdater(party tsslib.Party, msg tsslib.Message, 
 		return
 	}
 
+	t.psLock.Lock()
 	if _, err := party.UpdateFromBytes(bz, msg.GetFrom(), msg.IsBroadcast()); err != nil {
 		err := fmt.Errorf("UpdateFromBytes err =  %w, type = %s, from = %s", err, msg.Type(), msg.GetFrom().Id)
 		errCh <- party.WrapError(err)
 		return
 	}
+	t.psLock.Unlock()
 
 	t.Logger.Info("process - SharedPartyUpdater - Success", zap.String("type", msg.Type()),
 		zap.String("from", msg.GetFrom().Id))

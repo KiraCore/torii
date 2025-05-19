@@ -80,7 +80,10 @@ func (t *TssServer) NewTsskeySign(parties, quorum int) {
 		},
 		Key:           t.Key,
 		OneRoundMsgCh: make(chan *P2pMessage, parties),
+		psLock:        sync.Mutex{},
 	}
+
+	t.KeysignInstance.IsStarted.Store(true)
 }
 
 // send tss handshake to peers

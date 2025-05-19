@@ -29,6 +29,7 @@ type TssKeySign struct {
 	Key                *keygen.LocalPartySaveData
 	OneRoundMsgCh      chan *P2pMessage // to get info from others peers to make one round signing
 	IsStarted          atomic.Bool
+	psLock             sync.Mutex
 }
 
 type KeysignMsgsStorage struct { // storage for keygen msgs from another nodes

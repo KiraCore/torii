@@ -178,7 +178,7 @@ func (t *TssKeyGen) UpdateForRound(ctx context.Context, tssMsg *TssMessage, part
 			t.Logger.Info("keysign -> updateForRound -> got stop signal")
 			return
 		default:
-			time.Sleep(1 * time.Second)
+			//time.Sleep(1 * time.Second)
 			t.Logger.Info("UpdateForRound -> new iteration", zap.String("type", tssMsg.Type))
 			if len(t.KeygenMsgsStorage.M) == 0 {
 				t.Logger.Info("UpdateForRound -> map is empty")
@@ -200,7 +200,7 @@ func (t *TssKeyGen) UpdateForRound(ctx context.Context, tssMsg *TssMessage, part
 			t.KeygenMsgsStorage.Unlock()
 
 			if len(tempMap) != messagesCounter {
-				time.Sleep(1 * time.Second)
+				//time.Sleep(1 * time.Second)
 				t.Logger.Info("TEMPMAP", zap.Int("map length", len(tempMap)), zap.Int("required", messagesCounter))
 				//goto range_loop
 				continue
