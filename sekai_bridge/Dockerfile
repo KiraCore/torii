@@ -19,8 +19,16 @@ FROM alpine:3.17
 RUN apk --no-cache add ca-certificates && \
     update-ca-certificates
 
-# Copy the binary from builder
-COPY --from=builder /bin/app /bin/app
-RUN chmod +x /bin/app
+# Create directory for the application
+WORKDIR /app
 
-CMD ["/bin/app", "start"]
+# Copy the binary from builder
+COPY --from=builder /bin/app /app/app
+# Copy the config file
+COPY --from=builder /app/config.yml /app/config.yml
+# If you have additional config files, copy them too
+# COPY --from=builder /app/additional-configs/ /app/additional-configs/
+
+RUN chmod +x /app/app
+
+CMD ["/app/app", "start"]
