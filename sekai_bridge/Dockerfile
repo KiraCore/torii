@@ -13,6 +13,14 @@ WORKDIR /app
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build  -o /bin/app .
 
+# Step 3: Final image
+FROM alpine:3.17
+# Install CA certificates
+RUN apk --no-cache add ca-certificates && \
+    update-ca-certificates
+
+# Copy the binary from builder
+COPY --from=builder /bin/app /bin/app
 RUN chmod +x /bin/app
 
-CMD /bin/app start
+CMD ["/bin/app", "start"]
