@@ -61,6 +61,7 @@ services:
       - "8882:8882"
     volumes:
       - ./saiETHContractInteraction/config.yml:/srv/config.yml
+      - ./saiETHContractInteraction/contracts.json:/srv/contracts.json
 
   sai-cosmos-indexer:
     restart: always

@@ -33,6 +33,7 @@ type InternalService struct {
 	mu            *sync.Mutex
 	Context       *saiService.Context
 	config        model.ServiceConfig
+	handleBlocks  bool
 	currentBlock  int64
 	addresses     map[string]struct{}
 	storageConfig model.StorageConfig
@@ -58,6 +59,7 @@ func (is *InternalService) Init() {
 	is.config.NodeAddress = cast.ToString(is.Context.GetConfig("node_address", ""))
 	is.config.CollectionName = cast.ToString(is.Context.GetConfig("storage.mongo_collection_name", ""))
 	is.config.SkipFailedTxs = cast.ToBool(is.Context.GetConfig("skip_failed_tx", false))
+	is.config.HandleBlocks = cast.ToBool(is.Context.GetConfig("handle_blocks", false))
 	is.storageConfig = model.StorageConfig{
 		Token:      cast.ToString(is.Context.GetConfig("storage.token", "")),
 		Url:        cast.ToString(is.Context.GetConfig("storage.url", "")),
@@ -134,8 +136,6 @@ func (is *InternalService) Process() {
 				continue
 			}
 
-			logger.Logger.Debug("handleBlockTxs processed", zap.Any("block", is.currentBlock))
-
 			is.currentBlock += 1
 		}
 	}
@@ -148,10 +148,12 @@ func (is *InternalService) handleBlockTxs() error {
 		return err
 	}
 
-	err = is.sendBlockToStorage(blockInfo)
-	if err != nil {
-		logger.Logger.Error("handleBlockTxs", zap.Error(err))
-		return err
+	if is.handleBlocks {
+		err = is.sendBlockToStorage(blockInfo)
+		if err != nil {
+			logger.Logger.Error("handleBlockTxs", zap.Error(err))
+			return err
+		}
 	}
 
 	blockTxs, err := is.getBlockTxs()
@@ -160,7 +162,10 @@ func (is *InternalService) handleBlockTxs() error {
 		return err
 	}
 
-	var txArray []interface{}
+	logger.Logger.Debug("handleBlockTxs processed", zap.Any("block", is.currentBlock))
+	logger.Logger.Debug("handleBlockTxs processed", zap.Any("txs", blockTxs))
+
+	var txArray []model.Tx
 	encode := sekaiapp.MakeEncodingConfig()
 
 	for _, txRes := range blockTxs {
@@ -171,6 +176,8 @@ func (is *InternalService) handleBlockTxs() error {
 		if len(txRes.TxResult.Events) < 1 {
 			continue
 		}
+
+		txRes.Timestamp = blockInfo.Block.Header.Time
 
 		txBytes, err := base64.StdEncoding.DecodeString(txRes.Tx)
 		if err != nil {
@@ -220,12 +227,15 @@ func (is *InternalService) handleBlockTxs() error {
 	return err
 }
 
-func (is *InternalService) sendBlockToStorage(block interface{}) error {
+func (is *InternalService) sendBlockToStorage(block *model.BlockInfo) error {
 	storageRequest := adapter.Request{
-		Method: "create",
-		Data: adapter.CreateRequest{
+		Method: "upsert",
+		Data: adapter.UpsertRequest{
+			Select: map[string]interface{}{
+				"block_id.hash": block.BlockId.Hash,
+			},
 			Collection: is.storageConfig.Collection + "_blocks",
-			Documents:  []interface{}{block},
+			Document:   block,
 		},
 	}
 
@@ -239,23 +249,31 @@ func (is *InternalService) sendBlockToStorage(block interface{}) error {
 	return err
 }
 
-func (is *InternalService) sendTxsToStorage(txs []interface{}) error {
-	storageRequest := adapter.Request{
-		Method: "create",
-		Data: adapter.CreateRequest{
-			Collection: is.storageConfig.Collection + "_txs",
-			Documents:  txs,
-		},
+func (is *InternalService) sendTxsToStorage(txs []model.Tx) error {
+	for _, tx := range txs {
+		storageRequest := adapter.Request{
+			Method: "upsert",
+			Data: adapter.UpsertRequest{
+				Select: map[string]interface{}{
+					"hash": tx.Hash,
+				},
+				Collection: is.storageConfig.Collection + "_txs",
+				Document:   tx,
+			},
+		}
+
+		bodyBytes, err := jsoniter.Marshal(&storageRequest)
+		if err != nil {
+			return err
+		}
+
+		_, err = utils.SaiQuerySender(bytes.NewBuffer(bodyBytes), is.storageConfig.Url, is.storageConfig.Token)
+		if err != nil {
+			continue
+		}
 	}
 
-	bodyBytes, err := jsoniter.Marshal(&storageRequest)
-	if err != nil {
-		return err
-	}
-
-	_, err = utils.SaiQuerySender(bytes.NewBuffer(bodyBytes), is.storageConfig.Url, is.storageConfig.Token)
-
-	return err
+	return nil
 }
 
 func (is *InternalService) sendTxNotification(tx interface{}) {
