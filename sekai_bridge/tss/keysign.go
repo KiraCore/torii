@@ -2,6 +2,7 @@ package tss
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -184,7 +185,8 @@ func (t *TssKeySign) HandleOneRoundSigning(state *signing.SignatureData, req *Si
 		zap.String("tx", req.Tx),
 		zap.String("tx_hex", fmt.Sprintf("%x", []byte(req.Tx))))
 
-	convertedMsg := new(big.Int).SetBytes([]byte(req.Tx))
+	msgHash := sha256.Sum256([]byte(req.Tx))
+	convertedMsg := new(big.Int).SetBytes(msgHash[:])
 
 	t.Logger.Info("tss -> keysign -> one round -> converted message",
 		zap.String("convertedMsg", convertedMsg.String()),
@@ -265,6 +267,38 @@ loop:
 	t.Logger.Info("tss -> keysign -> one round -> collected all shares",
 		zap.Int("parties", t.Parties),
 		zap.Int("received", len(otherSiMap)))
+
+	correctedMap := make(map[*tsslib.PartyID]*big.Int)
+
+	for partyID, si := range otherSiMap {
+		t.Logger.Info("tss -> keysign -> one round -> original share details",
+			zap.String("partyID", partyID.Id),
+			zap.Int("index", partyID.Index),
+			zap.String("si", si.String()))
+
+		// Проверяем и исправляем отрицательные индексы
+		if partyID.Index < 0 {
+			if idx, ok := t.PartyIDMap[partyID.Id]; ok {
+				// Создаем новый PartyID с правильным индексом
+				fixedPartyID := tsslib.NewPartyID(partyID.Id, partyID.Moniker, new(big.Int).SetBytes(partyID.Key))
+				fixedPartyID.Index = idx
+
+				t.Logger.Warn("tss -> keysign -> fixing negative index",
+					zap.String("partyID", partyID.Id),
+					zap.Int("old_index", partyID.Index),
+					zap.Int("new_index", idx))
+
+				correctedMap[fixedPartyID] = si
+			} else {
+				return nil, fmt.Errorf("party %s has negative index and not found in map", partyID.Id)
+			}
+		} else {
+			correctedMap[partyID] = si
+		}
+	}
+
+	// Заменяем карту на исправленную
+	otherSiMap = correctedMap
 
 	for partyID, si := range otherSiMap {
 		t.Logger.Info("tss -> keysign -> one round -> share details",

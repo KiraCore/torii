@@ -6,7 +6,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"go.uber.org/zap"
 	"math/big"
+	"sort"
 	"sync"
 
 	"github.com/binance-chain/tss-lib/tss"
@@ -23,40 +25,60 @@ func PubkeyToPartyID(pubkey string) *tss.PartyID {
 
 func (t *TssServer) GetParties(localPartyKey string) ([]*tss.PartyID, *tss.PartyID, error) {
 	var localPartyID *tss.PartyID
-	var unSortedPartiesID []*tss.PartyID
-
 	keys := make([]string, 0)
+
+	// Собираем все ключи
 	t.RWMutex.RLock()
 	for pubkey := range t.ConnectionStorage {
 		keys = append(keys, pubkey)
 	}
 	t.RWMutex.RUnlock()
-
 	keys = append(keys, t.Pubkey)
-	for _, item := range keys {
-		// simple ids used
+
+	// Сортируем ключи для обеспечения согласованности между узлами
+	sort.Strings(keys)
+
+	// Создаем PartyID с правильными индексами
+	partiesID := make([]*tss.PartyID, 0, len(keys))
+	for i, item := range keys {
 		mon := fmt.Sprintf("moniker_%s", item)
-		key, _ := new(big.Int).SetString(item, 10)
+
+		key, success := new(big.Int).SetString(item, 10) // Попытка преобразовать как десятичное число
+		if !success {
+			// Если не удалось преобразовать как число, используем байтовое представление
+			key.SetBytes([]byte(item))
+		}
 		partyID := tss.NewPartyID(item, mon, key)
 
+		// Важно: устанавливаем индекс явно!
+		partyID.Index = i
+
+		// Проверяем, является ли это локальным ID
 		if item == localPartyKey {
 			localPartyID = partyID
 		}
 
-		unSortedPartiesID = append(unSortedPartiesID, partyID)
+		partiesID = append(partiesID, partyID)
 	}
 
 	if localPartyID == nil {
 		return nil, nil, errors.New("local party is not in the list")
 	}
 
-	partiesID := tss.SortPartyIDs(unSortedPartiesID)
+	// Логируем созданные PartyID для проверки
+	for _, partyID := range partiesID {
+		t.Logger.Info("GetParties -> created party",
+			zap.String("id", partyID.Id),
+			zap.Int("index", partyID.Index),
+			zap.String("moniker", partyID.Moniker))
+	}
 
-	//	t.Logger.Info("sorted order", zap.Any("keys", partiesID.Keys()))
-
+	// Сохраняем в карте
+	t.PartiesMap = make(map[tss.PartyID]bool, len(partiesID))
 	for _, partyID := range partiesID {
 		t.PartiesMap[*partyID] = true
 	}
+
 	return partiesID, localPartyID, nil
 }
 
