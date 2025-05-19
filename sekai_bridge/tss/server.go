@@ -80,6 +80,7 @@ func (t *TssServer) NewTsskeySign(parties, quorum int) {
 		},
 		Key:           t.Key,
 		OneRoundMsgCh: make(chan *P2pMessage, parties),
+		PartyIDMap:    make(map[string]int),
 		psLock:        sync.Mutex{},
 	}
 
