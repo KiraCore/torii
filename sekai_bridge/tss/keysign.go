@@ -179,8 +179,22 @@ func (t *TssServer) KeysignStartNotify(request *SignMessageRequest) error {
 
 // handle one round signing
 func (t *TssKeySign) HandleOneRoundSigning(state *signing.SignatureData, req *SignMessageRequest) (*signing.SignatureData, error) {
+	t.Logger.Info("tss -> keysign -> one round -> starting with input",
+		zap.Any("state", state),
+		zap.String("tx", req.Tx),
+		zap.String("tx_hex", fmt.Sprintf("%x", []byte(req.Tx))))
+
 	convertedMsg := new(big.Int).SetBytes([]byte(req.Tx))
+
+	t.Logger.Info("tss -> keysign -> one round -> converted message",
+		zap.String("convertedMsg", convertedMsg.String()),
+		zap.String("convertedMsg_hex", fmt.Sprintf("%x", convertedMsg.Bytes())))
+
 	sI := signing.FinalizeGetOurSigShare(state, convertedMsg)
+
+	t.Logger.Info("tss -> keysign -> one round -> our signature share",
+		zap.String("sI", sI.String()),
+		zap.String("sI_hex", fmt.Sprintf("%x", sI.Bytes())))
 
 	msg := P2pMessage{
 		Type:    KeysignOneRoundMsgType,
@@ -248,7 +262,17 @@ loop:
 		return nil, fmt.Errorf("failed to convert ECDSAPub to ECDSA public key")
 	}
 
+	t.Logger.Info("tss -> keysign -> one round -> collected all shares",
+		zap.Int("parties", t.Parties),
+		zap.Int("received", len(otherSiMap)))
+
 	for partyID, si := range otherSiMap {
+		t.Logger.Info("tss -> keysign -> one round -> share details",
+			zap.String("partyID", partyID.Id),
+			zap.Int("index", partyID.Index),
+			zap.String("si", si.String()),
+			zap.String("si_hex", fmt.Sprintf("%x", si.Bytes())))
+
 		if partyID == nil {
 			return nil, fmt.Errorf("partyID in otherSiMap is nil")
 		}
