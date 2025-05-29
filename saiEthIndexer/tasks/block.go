@@ -66,24 +66,20 @@ func NewBlockManager(c config.Configuration, logger *zap.Logger) *BlockManager {
 }
 
 func (bm *BlockManager) GetLastBlock(id int) (*Block, error) {
-	block := Block{ID: id}
 	pwd, err := os.Getwd()
 	if err != nil {
 		bm.logger.Error("tasks - BlockManager - get currect directory", zap.Error(err))
-		return &block, nil
 	}
 
 	data, err := ioutil.ReadFile(pwd + "/block.data")
 	if err != nil {
 		bm.logger.Error("tasks - BlockManager - read file", zap.Error(err))
-		return &block, nil
 	}
 
 	lastDataBlock, strErr := strconv.Atoi(string(data))
 
 	if strErr != nil {
-		log.Println("Data from file can't be converted to int:", err)
-		return &block, nil
+		log.Println("Data from file can't be converted to int:", strErr)
 	}
 
 	var lastBlocks []int

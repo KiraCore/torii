@@ -43,7 +43,7 @@ func (is *InternalService) makeTx(data, meta interface{}) (interface{}, int, err
 
 	fileBytes, err := os.ReadFile(body.Sender)
 	if err != nil {
-		return "", http.StatusInternalServerError, fmt.Errorf("don't have private key for %s", body.From)
+		return "", http.StatusInternalServerError, fmt.Errorf("don't have private key for %s", body.Sender)
 	}
 
 	txMaker, err := NewTransactionMaker(
