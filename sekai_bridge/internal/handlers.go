@@ -368,7 +368,7 @@ func (is *InternalService) callEthContract(txData, signature, meta interface{}) 
 			Value:    "0",
 			Params: []types.EthInteractionParam{
 				{Type: "address", Value: tx.Messages[0].To},
-				{Type: "string", Value: strings.ToLower(tx.Messages[0].To[2:] + tx.Hash[:24])},
+				{Type: "string", Value: strings.ToLower(tx.Messages[0].To[2:] + tx.Messages[0].Hash[:24])},
 				{Type: "uint256", Value: tx.Messages[0].Amount[0].Amount},
 			},
 			Signature: signature.(*tss.SignMessageResponse).SignatureMarshalled,
