@@ -161,8 +161,8 @@ func (is *InternalService) logs(data, meta interface{}) (interface{}, int, error
 	var err error
 
 	response := struct {
-		cosmos   interface{}
-		ethereum interface{}
+		Cosmos   interface{} `json:"cosmos"`
+		Ethereum interface{} `json:"ethereum"`
 	}{}
 
 	dataJSON, err := json.Marshal(data)
@@ -176,21 +176,24 @@ func (is *InternalService) logs(data, meta interface{}) (interface{}, int, error
 	}
 
 	selectData := bson.M{"$or": bson.A{
+		bson.M{"messages.from": request.Address},
+		bson.M{"messages.to": request.Address},
+		bson.M{"messages.hash": request.Address},
 		bson.M{"From": request.Address},
 		bson.M{"To": request.Address},
+		bson.M{"Events.Log.Address": request.Address},
+		bson.M{"Input.cyclAddress": request.Address},
 	}}
 
 	cosmosStorageRequest := adapter.Request{
 		Method: "read",
 		Data: adapter.ReadRequest{
-			Collection:    "Cosmos",
-			Select:        selectData,
-			Options:       &adapter.Options{},
-			IncludeFields: []string{""},
+			Collection: "Cosmos",
+			Select:     selectData,
 		},
 	}
 
-	response.cosmos, err = is.Storage.Send(cosmosStorageRequest)
+	response.Cosmos, err = is.Storage.Send(cosmosStorageRequest)
 	if err != nil {
 		return nil, 500, err
 	}
@@ -198,14 +201,12 @@ func (is *InternalService) logs(data, meta interface{}) (interface{}, int, error
 	ethereumStorageRequest := adapter.Request{
 		Method: "read",
 		Data: adapter.ReadRequest{
-			Collection:    "Cosmos",
-			Select:        selectData,
-			Options:       &adapter.Options{},
-			IncludeFields: []string{""},
+			Collection: "Ethereum",
+			Select:     selectData,
 		},
 	}
 
-	response.ethereum, err = is.Storage.Send(ethereumStorageRequest)
+	response.Ethereum, err = is.Storage.Send(ethereumStorageRequest)
 	if err != nil {
 		return nil, 500, err
 	}
