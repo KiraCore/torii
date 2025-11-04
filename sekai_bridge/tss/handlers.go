@@ -2,6 +2,7 @@ package tss
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	p2p "github.com/saiset-co/saiP2P-go/core"
@@ -81,7 +82,7 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 		if t.KeygenInstance == nil {
 			t.NewTssKeyGen(t.Parties, t.Threshold)
 		}
-		if t.KeygenInstance.IsStarted.Load() == true {
+		if t.KeygenInstance.IsStarted.Load() {
 			t.Logger.Debug("tss -> HandleP2PMessage -> keygen already started")
 			return
 		}
@@ -91,7 +92,7 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 			zap.String("local_party_id", t.LocalPartyID.Id),
 			zap.Int("local_party_index", t.LocalPartyID.Index))
 
-		if partiesID == nil || len(partiesID) == 0 {
+		if len(partiesID) == 0 {
 			t.Logger.Error("tss -> HandleP2PMessage -> KeysignStartMsgType -> partiesID is nil or empty")
 			return
 		}
@@ -162,7 +163,14 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 		}
 
 		t.LocalPartyID = localPartyID
-		t.NewTsskeySign(t.Parties, t.Quorum)
+
+		if t.KeysignInstance == nil {
+			t.NewTsskeySign(t.Parties, t.Quorum)
+		}
+		if t.KeysignInstance.IsStarted.Load() {
+			t.Logger.Debug("tss -> HandleP2PMessage -> keygen already started")
+			return
+		}
 
 		t.Logger.Info("tss -> HandleP2PMessage -> keysign start", zap.Int("parties", t.Parties),
 			zap.Int("quorum", t.Quorum), zap.String("msg", msg.KeysignRequest.Tx),
@@ -175,13 +183,16 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 			return
 		}
 	case KeysignMsgType:
-		t.Logger.Info("service -> HandleP2Pmessage -> keysign ->  got msg", zap.String("from", p2pMsg.From),
-			zap.Strings("to", p2pMsg.To), zap.String("type", msg.Type), zap.String("round", msg.Round))
+		t.Logger.Info("service -> HandleP2Pmessage -> keysign -> got msg",
+			zap.String("from", p2pMsg.From),
+			zap.Strings("to", p2pMsg.To),
+			zap.Any("tss", msg),
+		)
 		// @TODO: use not broadcasted msgs?
-		// if msg.TssMsg.From.Id == t.Pubkey {
-		// 	t.Logger.Error("tss -> handlers -> KeysignMsgType", zap.String("in id", msg.TssMsg.From.Id), zap.Error(errors.New("msg from own ID")))
-		// 	return
-		// }
+		if msg.TssMsg.From.Id == t.Pubkey {
+			t.Logger.Error("tss -> handlers -> KeysignMsgType", zap.String("in id", msg.TssMsg.From.Id), zap.Error(errors.New("msg from own ID")))
+			return
+		}
 
 		to := make([]string, 0)
 		for _, addr := range msg.TssMsg.To {
@@ -226,7 +237,7 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 			Si:      msg.Si,
 		}
 	case KeysignCancelledMsgType:
-		if t.KeysignInstance.IsStarted.Load() == true {
+		if t.KeysignInstance.IsStarted.Load() {
 			t.KeysignInstance.IsStarted.Store(false)
 			t.KeysignInstance.StopChan <- CommunicationError{
 				PeerAddr:  msg.CommunicationError.PeerAddr,
