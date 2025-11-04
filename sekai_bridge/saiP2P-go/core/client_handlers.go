@@ -35,6 +35,11 @@ func (c *Core) ClientPunchResponseHandler(message map[string]interface{}, server
 			for address := range list {
 				// client.server.Logger.Debug(punchResponse, zap.Any("ip", ip))
 				// client.server.Logger.Debug(punchResponse, zap.Any("port", port))
+				ip, port, err := net.SplitHostPort(address)
+				if err == nil {
+					c.addConnection(ip, port, c.Server.Address.PunchPort)
+				}
+				
 				c.Server.AddrChan <- address
 			}
 		}
@@ -93,6 +98,11 @@ func (c *Core) ClientHandshakeResponseHandler(message map[string]interface{}, se
 	if list, ok := message["list"]; ok != false && len(c.ConnectionStorage) < c.Config.P2P.Slot {
 		if list, done := list.(map[string]bool); done != false {
 			for address := range list {
+				ip, port, err := net.SplitHostPort(address)
+				if err == nil {
+					c.addConnection(ip, port, c.Server.Address.PunchPort)
+				}
+				
 				c.Server.AddrChan <- address
 			}
 		}
