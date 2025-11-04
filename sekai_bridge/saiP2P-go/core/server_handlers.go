@@ -17,14 +17,14 @@ func (c *Core) HandlePunch(request Request, newClientAddr *net.UDPAddr) {
 	newClientIP := newClientAddr.IP.String()
 	newClientPort := strconv.Itoa(newClientAddr.Port)
 
-	c.Logger.Debug("StartServer -> newClientAddr",
-		zap.String("addr", newClientAddr.String()),
-	)
+	// c.Logger.Debug("StartServer -> newClientAddr",
+	// 	zap.String("addr", newClientAddr.String()),
+	// )
 
 	_, err := c.GetConnection(newClientIP, newClientPort)
 	if err != nil && len(c.ConnectionStorage) < c.Config.P2P.Slot {
 		c.addConnection(newClientIP, newClientPort, "")
-		c.Logger.Info("clients connected", zap.Any("clients", c.ConnectionStorage))
+		//c.Logger.Info("clients connected", zap.Any("clients", c.ConnectionStorage))
 	} else {
 		c.Logger.Error("PunchHandler", zap.Error(err))
 		c.Logger.Error("PunchHandler", zap.Any("len", len(c.ConnectionStorage)))
@@ -69,7 +69,10 @@ func (c *Core) HandleMessage(request Request, newClientAddr *net.UDPAddr) {
 	if !found {
 		c.Cache.Set(string(request.Message.Data), nil)
 	} else {
-		c.Logger.Debug("p2p -> server -> MessageHandler : msg exists, skip sending ", zap.Any("from", request.Message.From))
+		c.Logger.Debug("p2p -> server -> MessageHandler : msg exists, skip sending ",
+			zap.Any("from", request.Message.From),
+			zap.Any("Data", request.Message.Data),
+		)
 		return
 	}
 
@@ -77,7 +80,7 @@ func (c *Core) HandleMessage(request Request, newClientAddr *net.UDPAddr) {
 
 	err = c.SendMsg(request.Message.Data, request.Message.To, request.LocalAddr)
 	if err != nil {
-		c.Logger.Error("Error", zap.Error(err))
+		c.Logger.Error("SendMsg", zap.Error(err))
 		return
 	}
 }
@@ -87,7 +90,7 @@ func (c *Core) HandleEvent(r *Request) {
 	switch r.Event.Type {
 	case DisconnectionEventType:
 		c.RemoveConnection(r.Event.Address)
-		c.Logger.Debug("handlers -> EventHandler -> node disconnected", zap.String("address", r.Event.Address))
+		//c.Logger.Debug("handlers -> EventHandler -> node disconnected", zap.String("address", r.Event.Address))
 
 	case ConnectionEventType:
 		addr := strings.Split(r.Event.Address, ":")
