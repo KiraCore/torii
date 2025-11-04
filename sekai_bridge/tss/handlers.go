@@ -162,14 +162,7 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 		}
 
 		t.LocalPartyID = localPartyID
-
-		if t.KeysignInstance == nil {
-			t.NewTsskeySign(t.Parties, t.Quorum)
-		}
-		if t.KeysignInstance.IsStarted.Load() {
-			t.Logger.Debug("tss -> HandleP2PMessage -> keygen already started")
-			return
-		}
+		t.NewTsskeySign(t.Parties, t.Quorum)
 
 		t.Logger.Info("tss -> HandleP2PMessage -> keysign start", zap.Int("parties", t.Parties),
 			zap.Int("quorum", t.Quorum), zap.String("msg", msg.KeysignRequest.Tx),
