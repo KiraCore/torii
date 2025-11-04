@@ -182,7 +182,20 @@ func (c *Core) DistributeMsg(to []string, message Message) {
 	if len(to) != 0 {
 		for _, address := range to {
 			// check if recepient is from connected list
-			if c.ConnectionStorage[address] {
+			found := c.ConnectionStorage[address]
+			if !found {
+				// Try to find by IP only (ignore port)
+				targetIP := c.extractIP(address)
+				for connAddr := range c.ConnectionStorage {
+					if c.extractIP(connAddr) == targetIP {
+						address = connAddr
+						found = true
+						break
+					}
+				}
+			}
+
+			if found {
 				err := c.sendMsg(message, address)
 				if err != nil {
 					continue
