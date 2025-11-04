@@ -71,7 +71,7 @@ func (c *Core) ConnectToPeer() error {
 			continue
 		}
 
-		c.Logger.Debug("p2p -> client -> incoming request", zap.Any("message", message))
+		c.Logger.Debug("p2p -> client -> incoming request", zap.Any("message", message["type"]))
 
 		if messageType, ok := message["type"]; ok != false {
 			switch messageType {
