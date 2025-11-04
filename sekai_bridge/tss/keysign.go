@@ -75,6 +75,7 @@ func (t *TssServer) Sign(req *SignMessageRequest) (*SignMessageResponse, error) 
 }
 
 func (t *TssKeySign) SignMessage(req *SignMessageRequest, partiesID []*tsslib.PartyID, localPartyID *tsslib.PartyID, key *keygen.LocalPartySaveData) (*common.ECSignature, error) {
+	t.LocalPartyID = localPartyID
 	t.PartyIDMap = make(map[string]int, len(partiesID))
 	for _, p := range partiesID {
 		t.PartyIDMap[p.Id] = p.Index
