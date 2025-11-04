@@ -296,7 +296,8 @@ func (t *TssKeySign) SharedPartyUpdater(party tsslib.Party, msg tsslib.Message, 
 	if party == nil {
 		t.Logger.Error("tss -> SharedPartyUpdater -> party is nil")
 		if errCh != nil {
-			errCh <- party.WrapError(fmt.Errorf("party is nil"))
+			nErr := party.WrapError(fmt.Errorf("party is nil"))
+			errCh <- nErr
 		}
 		return
 	}
