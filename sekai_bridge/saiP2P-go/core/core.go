@@ -349,10 +349,10 @@ func (c *Core) NextMsg(ctx context.Context) (*Message, error) {
 		if !ok {
 			return nil, errors.New("error")
 		}
-		c.Logger.Debug("NextMsg", zap.String("hash", req.Message.Hash),
-			zap.Int("part", req.Message.Part),
-			zap.Int("total parts", req.Message.TotalParts),
-			zap.Bool("last", req.Message.Last))
+		// c.Logger.Debug("NextMsg", zap.String("hash", req.Message.Hash),
+		// 	zap.Int("part", req.Message.Part),
+		// 	zap.Int("total parts", req.Message.TotalParts),
+		// 	zap.Bool("last", req.Message.Last))
 
 		if req.Message.Hash != "" && req.Message.Part != 0 && req.Message.TotalParts != 0 {
 			msg, err := c.HandleIncomingChunkedMsg(&req.Message)
