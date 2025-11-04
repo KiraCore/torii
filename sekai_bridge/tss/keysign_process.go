@@ -140,10 +140,27 @@ func (t *TssKeySign) UpdateForRound(ctx context.Context, tssMsg *TssMessage, par
 			}
 			t.KeysignMsgsStorage.Unlock()
 
+			msgDetails := make([]map[string]interface{}, 0)
+			for _, msg := range tempMap {
+				msgDetails = append(msgDetails, map[string]interface{}{
+					"type": msg.Type,
+					"from": msg.From.Id,
+					"broadcast": msg.IsBroadcast,
+				})
+			}
+
+			t.Logger.Info("UpdateForRound -> messages status",
+				zap.String("waitingFor", tssMsg.Type),
+				zap.Int("got", len(tempMap)),
+				zap.Int("required", messagesCounter),
+				zap.Any("messages", msgDetails))
+
 			if len(tempMap) != messagesCounter {
-				//	time.Sleep(1 * time.Second)
-				//		t.Logger.Info("TEMPMAP", zap.Int("map length", len(tempMap)), zap.Int("required", messagesCounter))
-				//goto range_loop
+				t.Logger.Info("UpdateForRound -> NOT ENOUGH MESSAGES",
+					zap.String("type", tssMsg.Type),
+					zap.Int("have", len(tempMap)),
+					zap.Int("need", messagesCounter),
+					zap.Any("collected", msgDetails))
 				continue
 			}
 			msgSlice := make([]TssMessage, 0, len(tempMap))
