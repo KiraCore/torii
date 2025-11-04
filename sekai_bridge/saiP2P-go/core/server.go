@@ -85,10 +85,10 @@ func (c *Core) Serve(filter filterConnections) (err error) {
 			continue
 		}
 
-		c.Logger.Debug("StartServer -> incomingRequest",
-			zap.String("Type", incomingRequest.Type),
-			zap.String("from", newClientAddr.String()),
-			zap.String("to", incomingRequest.RemoteAddr))
+		// c.Logger.Debug("StartServer -> incomingRequest",
+		// 	zap.String("Type", incomingRequest.Type),
+		// 	zap.String("from", newClientAddr.String()),
+		// 	zap.String("to", incomingRequest.RemoteAddr))
 
 		addr, err := net.ResolveUDPAddr("udp4", incomingRequest.RemoteAddr)
 		if err != nil {
@@ -101,18 +101,22 @@ func (c *Core) Serve(filter filterConnections) (err error) {
 		if incomingRequest.Type == punchRequest {
 			err = c.CheckAllowConn(filter, newClientAddr.IP.String(), fmt.Sprintf("%d", (newClientAddr.Port)))
 			if err != nil {
+				c.Logger.Error("p2p -> StartServer -> CheckAllowConn", zap.Error(err))
 				continue
 			}
 		}
 
 		switch incomingRequest.Type {
 		case punchRequest:
+			c.Logger.Debug("punchRequest", zap.Any("message", incomingRequest))
 			c.HandlePunch(incomingRequest, newClientAddr)
 		case handshakeRequest:
+			c.Logger.Debug("handshakeRequest", zap.Any("message", incomingRequest))
 			c.HandleHandshake(incomingRequest, newClientAddr)
 		case EventRequest:
 			c.HandleEvent(&incomingRequest)
 		default:
+			c.Logger.Debug("MessageRequest", zap.Any("message", incomingRequest))
 			c.HandleMessage(incomingRequest, newClientAddr)
 		}
 	}
