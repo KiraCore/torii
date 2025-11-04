@@ -46,7 +46,7 @@ func (c *Core) ConnectToPeer() error {
 		c.Server.Connections.Out.Close()
 	}()
 
-	c.Logger.Debug("Connect", zap.Any("request", request))
+	// c.Logger.Debug("Connect", zap.Any("request", request))
 
 	err = request.Send(c.Server.Connections.Out, serverUDPAddr)
 	if err != nil {
@@ -71,23 +71,26 @@ func (c *Core) ConnectToPeer() error {
 			continue
 		}
 
-		c.Logger.Debug("p2p -> client -> incoming request", zap.Any("message", message["type"]))
+		//c.Logger.Debug("p2p -> client -> incoming request", zap.Any("message", message["type"]))
 
 		if messageType, ok := message["type"]; ok {
 			switch messageType {
 			case punchResponse:
-				c.Logger.Debug(punchResponse, zap.Any("message", message))
+				c.Logger.Debug("punchResponse", zap.Any("message", message))
+
 				err := c.ClientPunchResponseHandler(message, serverIP, serverPort)
 				if err != nil {
+					c.Logger.Error("p2p -> client -> ClientPunchResponseHandler", zap.Error(err))
 					continue
 				}
 			case handshakeRequest:
+				c.Logger.Debug("handshakeRequest", zap.Any("message", message))
+
 				err := c.ClientHandshakeRequestHandler(message)
 				if err != nil {
 					c.Logger.Error("p2p -> client -> ClientHandshakeRequestHandler", zap.Error(err))
 					continue
 				}
-				//c.Logger.Debug(handshakeRequest, zap.Any("s.m", c.Server.m))
 			case handshakeResponse:
 				c.Logger.Debug("handshakeResponse", zap.Any("message", message))
 
@@ -96,9 +99,9 @@ func (c *Core) ConnectToPeer() error {
 					c.Logger.Error("p2p -> client -> ClientHandshakeResponseHandler", zap.Error(err))
 					continue
 				}
-
-				//c.Logger.Debug(handshakeResponse, zap.Any("s.m", c.Server.m))
 			case MessageRequest:
+				c.Logger.Debug("MessageRequest", zap.Any("message", message))
+
 				err := c.ClientMessageHandler(buf[0:n])
 				if err != nil {
 					c.Logger.Error("p2p -> client -> ClientMessageHandler", zap.Error(err))
@@ -119,10 +122,10 @@ func (c *Core) ConnectToPeer() error {
 				}
 			}
 		}
-		c.Logger.Debug("client - Messages",
-			zap.Int("messages", c.Client.Messages.Messages),
-			zap.Int("unique messages", c.Client.Messages.Unique),
-			zap.Int("system messages", c.Client.Messages.System),
-		)
+		// c.Logger.Debug("client - Messages",
+		// 	zap.Int("messages", c.Client.Messages.Messages),
+		// 	zap.Int("unique messages", c.Client.Messages.Unique),
+		// 	zap.Int("system messages", c.Client.Messages.System),
+		// )
 	}
 }
