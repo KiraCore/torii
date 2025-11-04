@@ -2,7 +2,6 @@ package tss
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	p2p "github.com/saiset-co/saiP2P-go/core"
@@ -189,10 +188,10 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 			zap.Any("tss", msg),
 		)
 		// @TODO: use not broadcasted msgs?
-		if msg.TssMsg.From.Id == t.Pubkey {
-			t.Logger.Error("tss -> handlers -> KeysignMsgType", zap.String("in id", msg.TssMsg.From.Id), zap.Error(errors.New("msg from own ID")))
-			return
-		}
+		// if msg.TssMsg.From.Id == t.Pubkey {
+		// 	t.Logger.Error("tss -> handlers -> KeysignMsgType", zap.String("in id", msg.TssMsg.From.Id), zap.Error(errors.New("msg from own ID")))
+		// 	return
+		// }
 
 		to := make([]string, 0)
 		for _, addr := range msg.TssMsg.To {
