@@ -15,13 +15,13 @@ import (
 func (c *Core) ClientPunchResponseHandler(message map[string]interface{}, serverIP, serverPort string) error {
 	//			client.server.Logger.Debug(punchResponse, zap.Any("message", message))
 
-	if status, ok := message["status"]; ok == true && status.(string) == statusConnectionRejected {
+	if status, ok := message["status"]; ok && status.(string) == statusConnectionRejected {
 		c.Logger.Debug("client - connection rejected", zap.String("IP", message["ip"].(string)), zap.String("Port", message["port"].(string)))
 		return errors.New("connection rejected")
 	}
 
-	if punch, ok := message["punch"]; ok != false && c.Server.Address.PunchPort == "" {
-		if punch, done := punch.(string); done != false {
+	if punch, ok := message["punch"]; ok && c.Server.Address.PunchPort == "" {
+		if punch, done := punch.(string); done {
 			c.Server.Address.PunchPort = punch
 			c.Server.Address.IP = net.ParseIP(message["ip"].(string))
 			c.addConnection(serverIP, serverPort, c.Server.Address.PunchPort)
@@ -30,11 +30,11 @@ func (c *Core) ClientPunchResponseHandler(message map[string]interface{}, server
 
 	//client.server.Logger.Debug("p2p - server - AddPubkeyToStorage - punchResp", zap.String("address", serverAddr.String())) //@debug
 
-	if list, ok := message["list"]; ok != false && len(c.ConnectionStorage) < c.Config.P2P.Slot {
-		if list, done := list.(map[string]interface{}); done != false {
+	if list, ok := message["list"]; ok && len(c.ConnectionStorage) < c.Config.P2P.Slot {
+		if list, done := list.(map[string]interface{}); done {
 			for address := range list {
 				// client.server.Logger.Debug(punchResponse, zap.Any("ip", ip))
-				// client.server.Logger.Debug(punchResponse, zap.Any("port", port))			
+				// client.server.Logger.Debug(punchResponse, zap.Any("port", port))
 				c.Server.AddrChan <- address
 			}
 		}
@@ -44,7 +44,7 @@ func (c *Core) ClientPunchResponseHandler(message map[string]interface{}, server
 
 // Handshake request handler for client core part
 func (c *Core) ClientHandshakeRequestHandler(message map[string]interface{}) error {
-	if localAddrS, ok := message["local_addr"]; ok == true {
+	if localAddrS, ok := message["local_addr"]; ok {
 		if localAddrS, done := localAddrS.(string); done {
 			localAddr, err := net.ResolveUDPAddr("udp4", localAddrS)
 			if err != nil {
@@ -90,15 +90,15 @@ func (c *Core) ClientHandshakeRequestHandler(message map[string]interface{}) err
 
 // Handshake response handler for client core part
 func (c *Core) ClientHandshakeResponseHandler(message map[string]interface{}, serverIP, serverPort string) error {
-	if list, ok := message["list"]; ok != false && len(c.ConnectionStorage) < c.Config.P2P.Slot {
-		if list, done := list.(map[string]bool); done != false {
-			for address := range list {	
+	if list, ok := message["list"]; ok && len(c.ConnectionStorage) < c.Config.P2P.Slot {
+		if list, done := list.(map[string]bool); done {
+			for address := range list {
 				c.Server.AddrChan <- address
 			}
 		}
 	}
 
-	if status, ok := message["status"]; ok != false && status == "OK" {
+	if status, ok := message["status"]; ok && status == "OK" {
 		c.Logger.Debug("handshakeResponse")
 		err := c.CheckAllowConn(c.Server.FilterConnections, serverIP, serverPort)
 		if err != nil {
@@ -114,7 +114,7 @@ func (c *Core) ClientMessageHandler(buf []byte) error {
 	msg := Request{}
 	err := json.Unmarshal(buf, &msg)
 	if err != nil {
-		return fmt.Errorf("Unmarshal :%w", err)
+		return fmt.Errorf("unmarshal :%w", err)
 	}
 	c.Logger.Debug("client - messageRequest", zap.String("type", msg.Type),
 		zap.String("local", msg.LocalAddr),
@@ -142,9 +142,9 @@ func (c *Core) ClientMessageHandler(buf []byte) error {
 
 	c.MsgCh <- &msg
 
-	c.SendMsg(msg.Message.Data, msg.Message.To, msg.LocalAddr)
+	err = c.SendMsg(msg.Message.Data, msg.Message.To, msg.LocalAddr)
 	if err != nil {
-		return fmt.Errorf("Send :%w", err)
+		return fmt.Errorf("send :%w", err)
 	}
 	c.Client.Messages.Messages++
 	return nil
@@ -155,7 +155,7 @@ func (c *Core) ClientEventHandler(buf []byte) error {
 	request := Request{}
 	err := json.Unmarshal(buf, &request)
 	if err != nil {
-		return fmt.Errorf("Unmarshal :%w", err)
+		return fmt.Errorf("unmarshal :%w", err)
 	}
 	c.Logger.Debug("client - EventRequest", zap.String("type", request.Type),
 		zap.String("local", request.LocalAddr),
@@ -167,7 +167,7 @@ func (c *Core) ClientEventHandler(buf []byte) error {
 // Default handler for client core part
 func (c *Core) ClientDefaultHandler(message map[string]interface{}) error {
 	c.Logger.Debug("Default", zap.Any("message", message))
-	if messageData, ok := message["message"]; ok == true {
+	if messageData, ok := message["message"]; ok {
 		if mess, done := messageData.(Message); done {
 			c.Logger.Debug("MessageHandler", zap.Any("message", mess))
 
@@ -187,10 +187,7 @@ func (c *Core) ClientDefaultHandler(message map[string]interface{}) error {
 			}
 
 			c.Logger.Debug("client - Connect - for loop - default", zap.String("type", reflect.TypeOf(messageData).String()))
-			err = c.Notify(mess)
-			if err != nil {
-				return fmt.Errorf("Notify :%w", err)
-			}
+
 			c.Client.Messages.Messages++
 		}
 	}
