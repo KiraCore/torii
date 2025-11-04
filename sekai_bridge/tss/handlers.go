@@ -71,6 +71,14 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 		}
 	// keygen
 	case KeygenStartMsgType: // start keygen command
+		partiesID, localPartyID, err := t.GetParties(t.Pubkey)
+		if err != nil {
+			t.Logger.Error("tss -> HandleP2PMessage -> KeygenStartMsgType -> GetParties", zap.Error(err))
+			return
+		}
+
+		t.LocalPartyID = localPartyID
+
 		if t.KeygenInstance == nil {
 			t.NewTssKeyGen(t.Parties, t.Threshold)
 		}
@@ -80,13 +88,9 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 		}
 
 		t.Logger.Info("tss -> HandleP2PMessage -> keygen start", zap.Int("parties", t.Parties),
-			zap.Int("threshold", t.Threshold))
-
-		partiesID, localPartyID, err := t.GetParties(t.Pubkey)
-		if err != nil {
-			t.Logger.Error("tss -> HandleP2PMessage -> KeygenStartMsgType -> GetParties")
-			return
-		}
+			zap.Int("threshold", t.Threshold),
+			zap.String("local_party_id", t.LocalPartyID.Id),
+			zap.Int("local_party_index", t.LocalPartyID.Index))
 
 		if partiesID == nil || len(partiesID) == 0 {
 			t.Logger.Error("tss -> HandleP2PMessage -> KeysignStartMsgType -> partiesID is nil or empty")
@@ -152,16 +156,19 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 
 		// keysign
 	case KeysignStartMsgType:
+		partiesID, localPartyID, err := t.GetParties(t.Pubkey)
+		if err != nil {
+			t.Logger.Error("tss -> HandleP2PMessage -> KeysignStartMsgType -> GetParties", zap.Error(err))
+			return
+		}
+
+		t.LocalPartyID = localPartyID
 		t.NewTsskeySign(t.Parties, t.Quorum)
 
 		t.Logger.Info("tss -> HandleP2PMessage -> keysign start", zap.Int("parties", t.Parties),
-			zap.Int("quorum", t.Quorum), zap.String("msg", msg.KeysignRequest.Tx))
-
-		partiesID, localPartyID, err := t.GetParties(t.Pubkey)
-		if err != nil {
-			t.Logger.Error("tss -> HandleP2PMessage -> KeysignStartMsgType -> GetParties")
-			return
-		}
+			zap.Int("quorum", t.Quorum), zap.String("msg", msg.KeysignRequest.Tx),
+			zap.String("local_party_id", t.LocalPartyID.Id),
+			zap.Int("local_party_index", t.LocalPartyID.Index))
 
 		_, err = t.KeysignInstance.SignMessage(msg.KeysignRequest, partiesID, localPartyID, t.Key)
 		if err != nil {
