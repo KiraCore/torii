@@ -197,10 +197,10 @@ func (c *Core) DistributeMsg(to []string, message Message) {
 					continue
 				}
 			} else {
-				c.Logger.Debug("p2p -> server -> Send -> recepient is not from connected list",
-					zap.String("recepient", address),
-					zap.Any("ConnectionStorage", c.ConnectionStorage),
-				)
+				// c.Logger.Debug("p2p -> server -> Send -> recepient is not from connected list",
+				// 	zap.String("recepient", address),
+				// 	zap.Any("ConnectionStorage", c.ConnectionStorage),
+				// )
 				continue
 			}
 
