@@ -2,7 +2,6 @@ package tss
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	p2p "github.com/saiset-co/saiP2P-go/core"
@@ -114,10 +113,10 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 		t.Logger.Info("service -> HandleP2Pmessage -> keygen ->  got msg", zap.String("from", p2pMsg.From),
 			zap.Strings("to", p2pMsg.To), zap.String("type", msg.Type), zap.String("round", msg.Round))
 		// @TODO: use not broadcasted msgs?
-		if msg.TssMsg.From.Id == t.Pubkey {
-			t.Logger.Error("tss -> handlers -> KeygenMsgType", zap.String("in id", msg.TssMsg.From.Id), zap.Error(errors.New("msg from own ID")))
-			return
-		}
+		// if msg.TssMsg.From.Id == t.Pubkey {
+		// 	t.Logger.Error("tss -> handlers -> KeygenMsgType", zap.String("in id", msg.TssMsg.From.Id), zap.Error(errors.New("msg from own ID")))
+		// 	return
+		// }
 
 		to := make([]string, 0)
 		for _, addr := range msg.TssMsg.To {
@@ -179,10 +178,10 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 		t.Logger.Info("service -> HandleP2Pmessage -> keysign ->  got msg", zap.String("from", p2pMsg.From),
 			zap.Strings("to", p2pMsg.To), zap.String("type", msg.Type), zap.String("round", msg.Round))
 		// @TODO: use not broadcasted msgs?
-		if msg.TssMsg.From.Id == t.Pubkey {
-			t.Logger.Error("tss -> handlers -> KeysignMsgType", zap.String("in id", msg.TssMsg.From.Id), zap.Error(errors.New("msg from own ID")))
-			return
-		}
+		// if msg.TssMsg.From.Id == t.Pubkey {
+		// 	t.Logger.Error("tss -> handlers -> KeysignMsgType", zap.String("in id", msg.TssMsg.From.Id), zap.Error(errors.New("msg from own ID")))
+		// 	return
+		// }
 
 		to := make([]string, 0)
 		for _, addr := range msg.TssMsg.To {
@@ -217,10 +216,10 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 
 	case KeysignOneRoundMsgType:
 		// @TODO: use not broadcasted msgs?
-		if msg.PartyID.Id == t.LocalPartyID.Id {
-			t.Logger.Error("tss -> handlers -> KeysignOneRoundMsgType", zap.String("in id", msg.TssMsg.From.Id), zap.Error(errors.New("msg from own ID")))
-			return
-		}
+		// if msg.PartyID.Id == t.LocalPartyID.Id {
+		// 	t.Logger.Error("tss -> handlers -> KeysignOneRoundMsgType", zap.String("in id", msg.TssMsg.From.Id), zap.Error(errors.New("msg from own ID")))
+		// 	return
+		// }
 
 		t.KeysignInstance.OneRoundMsgCh <- &P2pMessage{
 			PartyID: msg.PartyID,
