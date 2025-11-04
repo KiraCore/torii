@@ -56,6 +56,7 @@ func (t *TssServer) Keygen(parties, threshold int) (*Response, error) {
 }
 
 func (t *TssKeyGen) GenerateNewKey(partiesID []*tsslib.PartyID, localPartyID *tsslib.PartyID) (*keygen.LocalPartySaveData, error) {
+	t.LocalPartyID = localPartyID
 	t.IsStarted.Store(true)
 	defer func() {
 		t.IsStarted.Store(false)
