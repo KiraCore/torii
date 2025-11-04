@@ -130,8 +130,9 @@ func (c *Core) addConnection(ip, port, punchPort string) {
 	address := net.JoinHostPort(ip, port)
 	c.Lock()
 	c.ConnectionStorage[address] = true
+	c.Logger.Debug("p2p - server - addClient", zap.String("address", address), zap.Any("ConnectionStorage", c.ConnectionStorage))
 	c.Unlock()
-	c.Logger.Debug("p2p - server - addClient", zap.String("address", address))
+
 }
 
 // Get connection
