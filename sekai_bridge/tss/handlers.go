@@ -50,8 +50,11 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 		return
 	}
 
-	t.Logger.Info("service -> HandleP2Pmessage - got msg", zap.String("from", p2pMsg.From),
-		zap.Strings("to", p2pMsg.To), zap.String("type", msg.Type))
+	t.Logger.Info("service -> HandleP2Pmessage - got msg",
+		zap.String("from", p2pMsg.From),
+		zap.Strings("to", p2pMsg.To),
+		zap.String("type", msg.Type),
+	)
 
 	switch msg.Type {
 	case HandshakeMsgType: // for adding peers to map[id]peerAddr
@@ -188,12 +191,12 @@ func (t *TssServer) HandleP2Pmessage(p2pMsg *p2p.Message) {
 		_, ok := t.KeysignInstance.KeysignMsgsStorage.M[key]
 		if !ok {
 			t.KeysignInstance.KeysignMsgsStorage.M[key] = *msg.TssMsg
-			t.Logger.Info("KeysignMsgsStorage -> MESSAGE ADDED",
-				zap.String("type", msg.TssMsg.Type),
-				zap.String("from", msg.TssMsg.From.Id),
-				zap.Strings("to", to),
-				zap.Bool("broadcast", msg.TssMsg.IsBroadcast),
-				zap.Int("total_in_storage", len(t.KeysignInstance.KeysignMsgsStorage.M)))
+			// t.Logger.Info("KeysignMsgsStorage -> MESSAGE ADDED",
+			// 	zap.String("type", msg.TssMsg.Type),
+			// 	zap.String("from", msg.TssMsg.From.Id),
+			// 	zap.Strings("to", to),
+			// 	zap.Bool("broadcast", msg.TssMsg.IsBroadcast),
+			// 	zap.Int("total_in_storage", len(t.KeysignInstance.KeysignMsgsStorage.M)))
 		} else {
 			t.Logger.Debug("KeysignMsgsStorage -> MESSAGE ALREADY EXISTS (skipped duplicate)",
 				zap.String("type", msg.TssMsg.Type),
