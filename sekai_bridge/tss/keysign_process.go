@@ -119,24 +119,75 @@ func (t *TssKeySign) UpdateForRound(ctx context.Context, tssMsg *TssMessage, par
 
 			//range_loop:
 			t.KeysignMsgsStorage.Lock()
+
+			allMsgDetails := make([]map[string]interface{}, 0)
+			for _, msg := range t.KeysignMsgsStorage.M {
+				allMsgDetails = append(allMsgDetails, map[string]interface{}{
+					"type": msg.Type,
+					"from": msg.From.Id,
+					"broadcast": msg.IsBroadcast,
+					"to_count": len(msg.To),
+				})
+			}
+			t.Logger.Info("UpdateForRound -> ALL messages in storage",
+				zap.String("waitingFor", tssMsg.Type),
+				zap.Int("total", len(t.KeysignMsgsStorage.M)),
+				zap.Any("all_messages", allMsgDetails))
+
 			tempMap := make(map[string]TssMessage)
+			filteredOut := make([]map[string]interface{}, 0)
 			for key, msg := range t.KeysignMsgsStorage.M {
 				if singleMsg {
 					if msg.Type == tssMsg.Type {
-						if msg.IsBroadcast || msg.To[0].Id == t.LocalPartyID.Id {
+						if msg.IsBroadcast || (len(msg.To) > 0 && msg.To[0].Id == t.LocalPartyID.Id) {
 							tempMap[key] = msg
-							//	t.Logger.Info("ADDED TO TEMP MAP", zap.String("type", msg.Type), zap.String("from", msg.From.GetId()), zap.Bool("broadcast", msg.IsBroadcast))
+						} else {
+							filteredOut = append(filteredOut, map[string]interface{}{
+								"reason": "not broadcast and not for local party",
+								"type": msg.Type,
+								"from": msg.From.Id,
+								"broadcast": msg.IsBroadcast,
+								"to_count": len(msg.To),
+							})
 						}
+					} else {
+						filteredOut = append(filteredOut, map[string]interface{}{
+							"reason": "wrong type (singleMsg)",
+							"type": msg.Type,
+							"from": msg.From.Id,
+							"waiting_for": tssMsg.Type,
+						})
 					}
 					continue
 				}
 				if strings.Contains(msg.Type, msgType) {
-					if msg.IsBroadcast || msg.To[0].Id == t.LocalPartyID.Id {
+					if msg.IsBroadcast || (len(msg.To) > 0 && msg.To[0].Id == t.LocalPartyID.Id) {
 						tempMap[key] = msg
-						// t.Logger.Info("ADDED TO TEMP MAP", zap.String("type", msg.Type), zap.String("from", msg.From.GetId()), zap.Bool("broadcast", msg.IsBroadcast))
+					} else {
+						filteredOut = append(filteredOut, map[string]interface{}{
+							"reason": "not broadcast and not for local party",
+							"type": msg.Type,
+							"from": msg.From.Id,
+							"broadcast": msg.IsBroadcast,
+							"to_count": len(msg.To),
+						})
 					}
+				} else {
+					filteredOut = append(filteredOut, map[string]interface{}{
+						"reason": "wrong type (contains)",
+						"type": msg.Type,
+						"from": msg.From.Id,
+						"msgType_prefix": msgType,
+					})
 				}
 				continue
+			}
+
+			if len(filteredOut) > 0 {
+				t.Logger.Info("UpdateForRound -> FILTERED OUT messages",
+					zap.String("waitingFor", tssMsg.Type),
+					zap.Int("filtered_count", len(filteredOut)),
+					zap.Any("filtered_messages", filteredOut))
 			}
 			t.KeysignMsgsStorage.Unlock()
 
