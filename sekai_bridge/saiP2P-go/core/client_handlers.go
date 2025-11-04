@@ -99,7 +99,7 @@ func (c *Core) ClientHandshakeResponseHandler(message map[string]interface{}, se
 	}
 
 	if status, ok := message["status"]; ok && status == "OK" {
-		c.Logger.Debug("handshakeResponse")
+		//c.Logger.Debug("handshakeResponse")
 		err := c.CheckAllowConn(c.Server.FilterConnections, serverIP, serverPort)
 		if err != nil {
 			return fmt.Errorf("CheckAllowConn :%w", err)
@@ -116,9 +116,9 @@ func (c *Core) ClientMessageHandler(buf []byte) error {
 	if err != nil {
 		return fmt.Errorf("unmarshal :%w", err)
 	}
-	c.Logger.Debug("client - messageRequest", zap.String("type", msg.Type),
-		zap.String("local", msg.LocalAddr),
-		zap.String("remote", msg.RemoteAddr))
+	// c.Logger.Debug("client - messageRequest", zap.String("type", msg.Type),
+	// 	zap.String("local", msg.LocalAddr),
+	// 	zap.String("remote", msg.RemoteAddr))
 
 	found, err := c.CheckCache(string(msg.Message.Data))
 	if err != nil {
