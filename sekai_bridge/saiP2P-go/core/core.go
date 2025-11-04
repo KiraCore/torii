@@ -276,7 +276,7 @@ func (c *Core) RunClient() {
 func (c *Core) ProcessHandshakes() {
 	for {
 		peer := <-c.Server.AddrChan
-		//		c.Logger.Debug("HandleList", zap.Any("peer", peer))
+		c.Logger.Debug("ProcessHandshakes", zap.Any("peer", peer))
 
 		if peer == net.JoinHostPort(c.Server.Address.IP.String(), c.Config.P2P.Port) || peer == net.JoinHostPort(c.Server.Address.IP.String(), c.Server.Address.PunchPort) {
 			continue
