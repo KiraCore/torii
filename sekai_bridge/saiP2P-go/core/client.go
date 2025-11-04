@@ -73,7 +73,7 @@ func (c *Core) ConnectToPeer() error {
 
 		c.Logger.Debug("p2p -> client -> incoming request", zap.Any("message", message["type"]))
 
-		if messageType, ok := message["type"]; ok != false {
+		if messageType, ok := message["type"]; ok {
 			switch messageType {
 			case punchResponse:
 				c.Logger.Debug(punchResponse, zap.Any("message", message))
@@ -125,30 +125,4 @@ func (c *Core) ConnectToPeer() error {
 			zap.Int("system messages", c.Client.Messages.System),
 		)
 	}
-}
-
-// Notify logic, TODO
-func (c *Core) Notify(mess Message) error {
-	switch len(mess.To) {
-	case 0:
-		for _, _ = range c.Config.OnBroadcastMessageReceive {
-			//Send to C++ application
-
-			//c.Logger.Debug("Messages",
-			//	zap.Any("target", target),
-			//	zap.Any("message", mess),
-			//)
-		}
-	default:
-		for _, _ = range c.Config.OnDirectMessageReceive {
-			//Send to C++ application
-
-			//c.Logger.Debug("Messages",
-			//	zap.Any("target", target),
-			//	zap.Any("message", mess),
-			//)
-		}
-	}
-
-	return nil
 }
