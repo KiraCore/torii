@@ -282,7 +282,9 @@ func (c *Core) ProcessHandshakes() {
 			continue
 		}
 
-		if existing := c.ConnectionStorage[peer]; existing != true || existing == true {
+		c.Logger.Debug("ProcessHandshakes", zap.Any("ConnectionStorage", c.ConnectionStorage))
+
+		if existing := c.ConnectionStorage[peer]; existing {
 			serverUDPAddr, err := net.ResolveUDPAddr("udp4", peer)
 			if err != nil {
 				c.Logger.Error("HandleList", zap.Error(err))
@@ -290,7 +292,7 @@ func (c *Core) ProcessHandshakes() {
 			}
 
 			request := Request{Type: handshakeRequest, LocalAddr: c.Server.Address.IP.String() + ":" + c.Server.Address.PunchPort, RemoteAddr: peer}
-
+			c.Logger.Debug("ProcessHandshakes - Sending handshakeRequest", zap.Any("request", request))
 			err = request.Send(c.Server.Connections.Out, serverUDPAddr)
 			if err != nil {
 				c.Logger.Error("p2p -> core -> request.Send", zap.Error(err))
