@@ -116,7 +116,6 @@ func (c *Core) Serve(filter filterConnections) (err error) {
 		case EventRequest:
 			c.HandleEvent(&incomingRequest)
 		default:
-			c.Logger.Debug("MessageRequest", zap.Any("message", incomingRequest))
 			c.HandleMessage(incomingRequest, newClientAddr)
 		}
 	}
