@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -251,7 +252,30 @@ func (c *Core) sendMsg(message Message, address string) error {
 			c.Logger.Error("p2p -> server -> sendMsg -> request.Send(In)", zap.Error(err), zap.String("addr", clientAddr.String()))
 		}
 	}
-	c.Logger.Debug("p2p -> server -> sendMsg", zap.String("target", address))
+	var dataMap map[string]interface{}
+	unmarshalErr := json.Unmarshal(message.Data, &dataMap)
+
+	msgType := ""
+	round := ""
+	if unmarshalErr == nil && dataMap != nil {
+		if t, ok := dataMap["type"]; ok {
+			if str, ok := t.(string); ok {
+				msgType = str
+			}
+		}
+		if r, ok := dataMap["round"]; ok {
+			if str, ok := r.(string); ok {
+				round = str
+			}
+		}
+	}
+
+	c.Logger.Debug("p2p -> server -> sendMsg",
+		zap.String("From", message.From),
+		zap.Any("To", message.To),
+		zap.String("MessageType", msgType),
+		zap.String("Round", round),
+	)
 	return nil
 }
 
