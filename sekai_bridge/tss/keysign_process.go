@@ -301,7 +301,7 @@ func (t *TssKeySign) Update(msg *TssMessage) error {
 		return fmt.Errorf("local party ID is nil")
 	}
 
-	if t.LocalPartyID.Index-1 == parsedMsg.GetFrom().Index {
+	if t.LocalPartyID.Index == parsedMsg.GetFrom().Index {
 		return errors.New("tried to send a message to itself")
 	}
 
