@@ -176,6 +176,14 @@ func (c *Core) PrepareMsgChunks(data []byte, to []string, senderAddr string) []*
 	return msgs
 }
 
+func (c *Core) extractIP(address string) string {
+	ip, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return address
+	}
+	return ip
+}
+
 // messages distribution
 func (c *Core) DistributeMsg(to []string, message Message) {
 	// send msg only to recepients if recepients exists
