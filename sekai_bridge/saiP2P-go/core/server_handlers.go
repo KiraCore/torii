@@ -67,10 +67,10 @@ func (c *Core) HandleMessage(request Request, newClientAddr *net.UDPAddr) {
 	if !found {
 		c.Cache.Set(string(request.Message.Data), nil)
 	} else {
-		c.Logger.Debug("p2p -> server -> MessageHandler : msg exists, skip sending ",
-			zap.Any("from", request.Message.From),
-			zap.Any("Data", request.Message.Data),
-		)
+		// c.Logger.Debug("p2p -> server -> MessageHandler : msg exists, skip sending ",
+		// 	zap.Any("from", request.Message.From),
+		// 	zap.Any("Data", request.Message.Data),
+		// )
 		return
 	}
 
