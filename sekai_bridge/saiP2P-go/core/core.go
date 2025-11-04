@@ -196,13 +196,20 @@ func (c *Core) DistributeMsg(to []string, message Message) {
 					continue
 				}
 			} else {
-				c.Logger.Debug("p2p -> server -> Send -> recepient is not from connected list", zap.String("recepient", address))
+				c.Logger.Debug("p2p -> server -> Send -> recepient is not from connected list",
+					zap.String("recepient", address),
+					zap.Any("ConnectionStorage", c.ConnectionStorage),
+				)
 				continue
 			}
 
 		}
 		//send msg to all connections if recepients is empty
 	} else {
+		c.Logger.Debug("p2p -> server -> Send -> BROADCAST",
+			zap.Any("ConnectionStorage", c.ConnectionStorage),
+		)
+
 		for address := range c.ConnectionStorage {
 			err := c.sendMsg(message, address)
 			if err != nil {
