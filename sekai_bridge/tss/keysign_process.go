@@ -126,9 +126,10 @@ func (t *TssKeySign) UpdateForRound(ctx context.Context, tssMsg *TssMessage, par
 					"type":      msg.Type,
 					"from":      msg.From.Id,
 					"broadcast": msg.IsBroadcast,
-					"to_count":  len(msg.To),
+					"to":        msg.To,
 				})
 			}
+
 			t.Logger.Info("UpdateForRound -> ALL messages in storage",
 				zap.String("waitingFor", tssMsg.Type),
 				zap.Int("total", len(t.KeysignMsgsStorage.M)),
