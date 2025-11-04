@@ -100,8 +100,6 @@ func (c *Core) ConnectToPeer() error {
 					continue
 				}
 			case MessageRequest:
-				c.Logger.Debug("MessageRequest", zap.Any("message", message))
-
 				err := c.ClientMessageHandler(buf[0:n])
 				if err != nil {
 					c.Logger.Error("p2p -> client -> ClientMessageHandler", zap.Error(err))
