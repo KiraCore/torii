@@ -123,10 +123,10 @@ func (t *TssKeySign) UpdateForRound(ctx context.Context, tssMsg *TssMessage, par
 			allMsgDetails := make([]map[string]interface{}, 0)
 			for _, msg := range t.KeysignMsgsStorage.M {
 				allMsgDetails = append(allMsgDetails, map[string]interface{}{
-					"type": msg.Type,
-					"from": msg.From.Id,
+					"type":      msg.Type,
+					"from":      msg.From.Id,
 					"broadcast": msg.IsBroadcast,
-					"to_count": len(msg.To),
+					"to_count":  len(msg.To),
 				})
 			}
 			t.Logger.Info("UpdateForRound -> ALL messages in storage",
@@ -142,20 +142,36 @@ func (t *TssKeySign) UpdateForRound(ctx context.Context, tssMsg *TssMessage, par
 						if msg.IsBroadcast || (len(msg.To) > 0 && msg.To[0].Id == t.LocalPartyID.Id) {
 							tempMap[key] = msg
 						} else {
+							toIds := make([]string, 0)
+							if len(msg.To) > 0 {
+								for _, to := range msg.To {
+									toIds = append(toIds, to.Id)
+								}
+							}
 							filteredOut = append(filteredOut, map[string]interface{}{
-								"reason": "not broadcast and not for local party",
-								"type": msg.Type,
-								"from": msg.From.Id,
-								"broadcast": msg.IsBroadcast,
-								"to_count": len(msg.To),
+								"reason":         "not broadcast and not for local party",
+								"type":           msg.Type,
+								"from":           msg.From.Id,
+								"broadcast":      msg.IsBroadcast,
+								"to_ids":         toIds,
+								"local_party_id": t.LocalPartyID.Id,
+								"to_count":       len(msg.To),
 							})
 						}
 					} else {
+						toIds := make([]string, 0)
+						if len(msg.To) > 0 {
+							for _, to := range msg.To {
+								toIds = append(toIds, to.Id)
+							}
+						}
 						filteredOut = append(filteredOut, map[string]interface{}{
-							"reason": "wrong type (singleMsg)",
-							"type": msg.Type,
-							"from": msg.From.Id,
-							"waiting_for": tssMsg.Type,
+							"reason":         "wrong type (singleMsg)",
+							"type":           msg.Type,
+							"from":           msg.From.Id,
+							"to_ids":         toIds,
+							"local_party_id": t.LocalPartyID.Id,
+							"waiting_for":    tssMsg.Type,
 						})
 					}
 					continue
@@ -164,19 +180,35 @@ func (t *TssKeySign) UpdateForRound(ctx context.Context, tssMsg *TssMessage, par
 					if msg.IsBroadcast || (len(msg.To) > 0 && msg.To[0].Id == t.LocalPartyID.Id) {
 						tempMap[key] = msg
 					} else {
+						toIds := make([]string, 0)
+						if len(msg.To) > 0 {
+							for _, to := range msg.To {
+								toIds = append(toIds, to.Id)
+							}
+						}
 						filteredOut = append(filteredOut, map[string]interface{}{
-							"reason": "not broadcast and not for local party",
-							"type": msg.Type,
-							"from": msg.From.Id,
-							"broadcast": msg.IsBroadcast,
-							"to_count": len(msg.To),
+							"reason":         "not broadcast and not for local party",
+							"type":           msg.Type,
+							"from":           msg.From.Id,
+							"broadcast":      msg.IsBroadcast,
+							"to_ids":         toIds,
+							"local_party_id": t.LocalPartyID.Id,
+							"to_count":       len(msg.To),
 						})
 					}
 				} else {
+					toIds := make([]string, 0)
+					if len(msg.To) > 0 {
+						for _, to := range msg.To {
+							toIds = append(toIds, to.Id)
+						}
+					}
 					filteredOut = append(filteredOut, map[string]interface{}{
-						"reason": "wrong type (contains)",
-						"type": msg.Type,
-						"from": msg.From.Id,
+						"reason":         "wrong type (contains)",
+						"type":           msg.Type,
+						"from":           msg.From.Id,
+						"to_ids":         toIds,
+						"local_party_id": t.LocalPartyID.Id,
 						"msgType_prefix": msgType,
 					})
 				}
@@ -194,8 +226,8 @@ func (t *TssKeySign) UpdateForRound(ctx context.Context, tssMsg *TssMessage, par
 			msgDetails := make([]map[string]interface{}, 0)
 			for _, msg := range tempMap {
 				msgDetails = append(msgDetails, map[string]interface{}{
-					"type": msg.Type,
-					"from": msg.From.Id,
+					"type":      msg.Type,
+					"from":      msg.From.Id,
 					"broadcast": msg.IsBroadcast,
 				})
 			}
