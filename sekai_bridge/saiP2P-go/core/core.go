@@ -284,7 +284,7 @@ func (c *Core) ProcessHandshakes() {
 
 		c.Logger.Debug("ProcessHandshakes", zap.Any("ConnectionStorage", c.ConnectionStorage))
 
-		if existing := c.ConnectionStorage[peer]; existing {
+		if existing := c.ConnectionStorage[peer]; !existing {
 			serverUDPAddr, err := net.ResolveUDPAddr("udp4", peer)
 			if err != nil {
 				c.Logger.Error("HandleList", zap.Error(err))
