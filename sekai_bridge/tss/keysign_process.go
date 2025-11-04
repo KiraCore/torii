@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	tsslib "github.com/binance-chain/tss-lib/tss"
@@ -176,7 +175,7 @@ func (t *TssKeySign) UpdateForRound(ctx context.Context, tssMsg *TssMessage, par
 					}
 					continue
 				}
-				if strings.Contains(msg.Type, msgType) {
+				if msg.Type == tssMsg.Type {
 					if msg.IsBroadcast || (len(msg.To) > 0 && msg.To[0].Id == t.LocalPartyID.Id) {
 						tempMap[key] = msg
 					} else {
