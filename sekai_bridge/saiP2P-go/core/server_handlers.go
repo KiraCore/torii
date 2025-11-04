@@ -10,8 +10,6 @@ import (
 
 // Handle punch request from server part of core
 func (c *Core) HandlePunch(request Request, newClientAddr *net.UDPAddr) {
-	c.Logger.Debug("p2p -> server -> punchRequest", zap.String("request", request.RemoteAddr))
-
 	c.Server.Address.IP = net.ParseIP(strings.Split(request.RemoteAddr, ":")[0])
 
 	newClientIP := newClientAddr.IP.String()
