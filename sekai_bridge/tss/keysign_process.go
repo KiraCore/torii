@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	tsslib "github.com/binance-chain/tss-lib/tss"
@@ -136,46 +137,14 @@ func (t *TssKeySign) UpdateForRound(ctx context.Context, tssMsg *TssMessage, par
 			tempMap := make(map[string]TssMessage)
 			filteredOut := make([]map[string]interface{}, 0)
 			for key, msg := range t.KeysignMsgsStorage.M {
+				var typeMatches bool
 				if singleMsg {
-					if msg.Type == tssMsg.Type {
-						if msg.IsBroadcast || (len(msg.To) > 0 && msg.To[0].Id == t.LocalPartyID.Id) {
-							tempMap[key] = msg
-						} else {
-							toIds := make([]string, 0)
-							if len(msg.To) > 0 {
-								for _, to := range msg.To {
-									toIds = append(toIds, to.Id)
-								}
-							}
-							filteredOut = append(filteredOut, map[string]interface{}{
-								"reason":         "not broadcast and not for local party",
-								"type":           msg.Type,
-								"from":           msg.From.Id,
-								"broadcast":      msg.IsBroadcast,
-								"to_ids":         toIds,
-								"local_party_id": t.LocalPartyID.Id,
-								"to_count":       len(msg.To),
-							})
-						}
-					} else {
-						toIds := make([]string, 0)
-						if len(msg.To) > 0 {
-							for _, to := range msg.To {
-								toIds = append(toIds, to.Id)
-							}
-						}
-						filteredOut = append(filteredOut, map[string]interface{}{
-							"reason":         "wrong type (singleMsg)",
-							"type":           msg.Type,
-							"from":           msg.From.Id,
-							"to_ids":         toIds,
-							"local_party_id": t.LocalPartyID.Id,
-							"waiting_for":    tssMsg.Type,
-						})
-					}
-					continue
+					typeMatches = msg.Type == tssMsg.Type
+				} else {
+					typeMatches = strings.Contains(msg.Type, msgType)
 				}
-				if msg.Type == tssMsg.Type {
+
+				if typeMatches {
 					if msg.IsBroadcast || (len(msg.To) > 0 && msg.To[0].Id == t.LocalPartyID.Id) {
 						tempMap[key] = msg
 					} else {
@@ -202,16 +171,22 @@ func (t *TssKeySign) UpdateForRound(ctx context.Context, tssMsg *TssMessage, par
 							toIds = append(toIds, to.Id)
 						}
 					}
+					var reason string
+					if singleMsg {
+						reason = "wrong type (exact match)"
+					} else {
+						reason = "wrong type (prefix match)"
+					}
 					filteredOut = append(filteredOut, map[string]interface{}{
-						"reason":         "wrong type (contains)",
+						"reason":         reason,
 						"type":           msg.Type,
 						"from":           msg.From.Id,
 						"to_ids":         toIds,
 						"local_party_id": t.LocalPartyID.Id,
+						"waiting_for":    tssMsg.Type,
 						"msgType_prefix": msgType,
 					})
 				}
-				continue
 			}
 
 			if len(filteredOut) > 0 {
